@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from io import BytesIO
 import jwt
@@ -72,7 +72,7 @@ def save_avatar_file(photo):
     if not photo or not getattr(photo, 'filename', ''):
         return None
 
-    filename = secure_filename(f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{photo.filename}")
+    filename = secure_filename(f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{photo.filename}")
     last_error = None
 
     for uploads_dir in _avatar_storage_candidates():
@@ -182,7 +182,7 @@ def seed_database():
                     'publishedAt': '2025-03-20',
                     'description': 'Foundation entries capturing early internship reflections.',
                     'items': 4,
-                    'createdAt': datetime.utcnow(),
+                    'createdAt': datetime.now(timezone.utc),
                 },
                 {
                     'volumeLabel': 'Volume II',
@@ -190,7 +190,7 @@ def seed_database():
                     'publishedAt': '2026-02-11',
                     'description': 'Internship experiences focused on skill-building.',
                     'items': 8,
-                    'createdAt': datetime.utcnow(),
+                    'createdAt': datetime.now(timezone.utc),
                 },
             ])
         
@@ -204,7 +204,7 @@ def seed_database():
                     'volumeId': '',
                     'status': 'active',
                     'submissionCount': 0,
-                    'createdAt': datetime.utcnow(),
+                    'createdAt': datetime.now(timezone.utc),
                 },
                 {
                     'title': 'Field Practice Reflection',
@@ -214,7 +214,7 @@ def seed_database():
                     'volumeId': '',
                     'status': 'active',
                     'submissionCount': 0,
-                    'createdAt': datetime.utcnow(),
+                    'createdAt': datetime.now(timezone.utc),
                 },
             ])
         
@@ -239,7 +239,7 @@ def seed_database():
                         'summary': 'My internship at Tech Corp India was transformative. I worked on real-world projects involving cloud infrastructure and DevOps. Collaborated with talented professionals and gained practical experience that complemented my academic learning. The mentorship I received from senior engineers has shaped my career trajectory significantly. Highly recommend this organization for students interested in technology.',
                         'status': 'approved',
                         'submittedAt': '2025-08-15',
-                        'createdAt': datetime.utcnow(),
+                        'createdAt': datetime.now(timezone.utc),
                     },
                     {
                         'formId': form_id,
@@ -254,7 +254,7 @@ def seed_database():
                         'summary': 'During my marketing internship at MSL, I developed comprehensive digital campaign strategies that directly impacted business metrics. Worked with SEO, SEM, and social media marketing. The hands-on experience with marketing tools and customer insights has prepared me well for my post-graduation role. Highly recommend this opportunity to anyone interested in digital marketing.',
                         'status': 'approved',
                         'submittedAt': '2025-08-20',
-                        'createdAt': datetime.utcnow(),
+                        'createdAt': datetime.now(timezone.utc),
                     },
                     {
                         'formId': form_id,
@@ -269,7 +269,7 @@ def seed_database():
                         'summary': 'The finance internship program at FAG was rigorous and rewarding. I analyzed financial statements, participated in client meetings, and contributed to strategic recommendations. Worked on equity research and portfolio analysis. This experience has solidified my decision to pursue a career in investment banking.',
                         'status': 'approved',
                         'submittedAt': '2025-09-05',
-                        'createdAt': datetime.utcnow(),
+                        'createdAt': datetime.now(timezone.utc),
                     },
                     {
                         'formId': form_id,
@@ -284,7 +284,7 @@ def seed_database():
                         'summary': 'Working with the social impact team was incredibly fulfilling. I contributed to projects that made a tangible difference in rural communities. Beyond professional skills, this internship deepened my commitment to social responsibility. Participated in community impact assessments and project evaluation.',
                         'status': 'approved',
                         'submittedAt': '2025-09-10',
-                        'createdAt': datetime.utcnow(),
+                        'createdAt': datetime.now(timezone.utc),
                     },
                     {
                         'formId': form_id,
@@ -299,7 +299,7 @@ def seed_database():
                         'summary': 'The product development internship exposed me to the entire product lifecycle. From ideation to launch, I was involved in cross-functional teams including design and engineering. Worked on mobile application development using React Native. The problem-solving skills and agile methodologies I learned are invaluable.',
                         'status': 'approved',
                         'submittedAt': '2025-09-15',
-                        'createdAt': datetime.utcnow(),
+                        'createdAt': datetime.now(timezone.utc),
                     },
                     {
                         'formId': form_id,
@@ -314,7 +314,7 @@ def seed_database():
                         'summary': 'My research internship involved conducting literature reviews, data collection, and statistical analysis on climate change mitigation. Working closely with experienced researchers has inspired me to pursue further studies. Contributed to two published papers in environmental journals.',
                         'status': 'approved',
                         'submittedAt': '2025-09-20',
-                        'createdAt': datetime.utcnow(),
+                        'createdAt': datetime.now(timezone.utc),
                     },
                 ])
     except Exception as e:
@@ -326,7 +326,7 @@ def sign_token(user_id, email, name):
         'sub': str(user_id),
         'email': email,
         'name': name,
-        'exp': datetime.utcnow() + timedelta(days=7),
+        'exp': datetime.now(timezone.utc) + timedelta(days=7),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 
@@ -336,7 +336,7 @@ def sign_student_token(user_id, email, name):
         'sub': str(user_id),
         'email': email,
         'name': name,
-        'exp': datetime.utcnow() + timedelta(days=7),
+        'exp': datetime.now(timezone.utc) + timedelta(days=7),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 
@@ -607,7 +607,7 @@ def auth_login():
 
         student_user = students.find_one({'email': email})
         if student_user and bcrypt.checkpw(password.encode(), student_user['passwordHash'].encode()):
-            students.update_one({'_id': student_user['_id']}, {'$set': {'lastLoginAt': datetime.utcnow()}})
+            students.update_one({'_id': student_user['_id']}, {'$set': {'lastLoginAt': datetime.now(timezone.utc)}})
             token = sign_student_token(student_user['_id'], student_user['email'], student_user['name'])
             response = jsonify({'user': {'id': str(student_user['_id']), 'email': student_user['email'], 'name': student_user['name']}, 'role': 'student'})
             response.set_cookie(
@@ -625,7 +625,7 @@ def auth_login():
                 'name': student_user['name'],
                 'email': student_user['email'],
                 'eventType': 'login',
-                'createdAt': datetime.utcnow(),
+                'createdAt': datetime.now(timezone.utc),
             })
             return response
 
@@ -676,8 +676,8 @@ def student_register():
             'name': name,
             'email': email,
             'passwordHash': password_hash,
-            'createdAt': datetime.utcnow(),
-            'lastLoginAt': datetime.utcnow(),
+            'createdAt': datetime.now(timezone.utc),
+            'lastLoginAt': datetime.now(timezone.utc),
         }
         result = students.insert_one(doc)
         doc['_id'] = result.inserted_id
@@ -687,7 +687,7 @@ def student_register():
             'name': doc['name'],
             'email': doc['email'],
             'eventType': 'register',
-            'createdAt': datetime.utcnow(),
+            'createdAt': datetime.now(timezone.utc),
         })
 
         return jsonify({'user': {'id': str(doc['_id']), 'email': doc['email'], 'name': doc['name']}, 'message': 'Registration complete. Please log in.'}), 201
@@ -709,7 +709,7 @@ def student_login():
         if not user or not bcrypt.checkpw(password.encode(), user['passwordHash'].encode()):
             return jsonify({'message': 'Invalid student credentials.'}), 401
 
-        students.update_one({'_id': user['_id']}, {'$set': {'lastLoginAt': datetime.utcnow()}})
+        students.update_one({'_id': user['_id']}, {'$set': {'lastLoginAt': datetime.now(timezone.utc)}})
         token = sign_student_token(user['_id'], user['email'], user['name'])
         response = jsonify({'user': {'id': str(user['_id']), 'email': user['email'], 'name': user['name']}})
         response.set_cookie(
@@ -726,7 +726,7 @@ def student_login():
             'name': user['name'],
             'email': user['email'],
             'eventType': 'login',
-            'createdAt': datetime.utcnow(),
+            'createdAt': datetime.now(timezone.utc),
         })
 
         return response
@@ -789,7 +789,7 @@ def track_visitor():
             'referrer': data.get('referrer', ''),
             'userAgent': data.get('userAgent', ''),
             'ipAddress': request.remote_addr,
-            'createdAt': datetime.utcnow(),
+            'createdAt': datetime.now(timezone.utc),
         })
         
         return jsonify({'visitorId': visitor_id})
@@ -833,7 +833,7 @@ def analytics_visitors():
             {'$limit': 10}
         ]))
         
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
         
         daily = list(visitors.aggregate([
             {'$match': {'createdAt': {'$gte': seven_days_ago}}},
@@ -909,7 +909,7 @@ def create_form():
             'volumeId': data.get('volumeId', ''),
             'status': data.get('status', 'active'),
             'submissionCount': 0,
-            'createdAt': datetime.utcnow(),
+            'createdAt': datetime.now(timezone.utc),
         }
         result = forms.insert_one(doc)
         doc['_id'] = result.inserted_id
@@ -984,7 +984,7 @@ def create_volume():
             'publishedAt': data['publishedAt'],
             'description': data['description'],
             'items': data.get('items', 0),
-            'createdAt': datetime.utcnow(),
+            'createdAt': datetime.now(timezone.utc),
         }
         result = volumes.insert_one(doc)
         doc['_id'] = result.inserted_id
@@ -1139,7 +1139,7 @@ def create_submission():
         
         # Check deadline - compare as strings
         form_deadline = str(form.get('deadline', '')).split('T')[0]
-        current_date = datetime.utcnow().strftime('%Y-%m-%d')
+        current_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         if form_deadline < current_date:
             return jsonify({'message': 'Submission deadline has passed.'}), 400
         
@@ -1172,8 +1172,8 @@ def create_submission():
             'mentor': data['mentor'],
             'duration': data['duration'],
             'summary': data['summary'],
-            'submittedAt': data.get('submittedAt', datetime.utcnow().strftime('%Y-%m-%d')),
-            'createdAt': datetime.utcnow(),
+            'submittedAt': data.get('submittedAt', datetime.now(timezone.utc).strftime('%Y-%m-%d')),
+            'createdAt': datetime.now(timezone.utc),
             'status': 'pending',
             'statusReason': '',
         }
@@ -1204,7 +1204,7 @@ def create_submission():
             'eventType': 'form_submit',
             'formId': ObjectId(data['formId']),
             'submissionId': doc['_id'],
-            'createdAt': datetime.utcnow(),
+            'createdAt': datetime.now(timezone.utc),
             'ipAddress': request.remote_addr,
         })
         return jsonify(to_client(doc)), 201
@@ -1255,7 +1255,7 @@ def verify_submission(submission_id):
 
         result = submissions.update_one(
             {'_id': ObjectId(submission_id)},
-            {'$set': {'status': status, 'statusReason': reason, 'verifiedAt': datetime.utcnow(), 'verifiedBy': request.user['id']}}
+            {'$set': {'status': status, 'statusReason': reason, 'verifiedAt': datetime.now(timezone.utc), 'verifiedBy': request.user['id']}}
         )
 
         if result.matched_count == 0:
@@ -1270,7 +1270,7 @@ def verify_submission(submission_id):
             'email': sub.get('email', ''),
             'eventType': f'submission_{status}',
             'submissionId': sub['_id'],
-            'createdAt': datetime.utcnow(),
+            'createdAt': datetime.now(timezone.utc),
             'adminId': request.user['id'],
         })
 
