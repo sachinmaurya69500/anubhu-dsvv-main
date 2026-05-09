@@ -92,6 +92,14 @@ def save_avatar_file(photo):
     raise OSError('Unable to save avatar file.')
 
 
+def get_client_ip():
+    """Return the best-effort client IP address for audit logs."""
+    forwarded_for = request.headers.get('X-Forwarded-For', '')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip() or request.remote_addr or ''
+    return request.remote_addr or ''
+
+
 @app.route('/api/uploads/avatars/<path:filename>', methods=['GET'])
 def get_uploaded_avatar(filename):
     """Serve uploaded avatar images from writable storage locations."""
@@ -400,6 +408,14 @@ def serve_admin_visitors():
         return redirect('/auth')
     return render_template('admin-visitors.html', auth_role='admin')
 
+@app.route('/admin/users')
+def serve_admin_users():
+    """Serve admin user access management page."""
+    user = verify_auth()
+    if not user:
+        return redirect('/auth')
+    return render_template('admin-users.html', auth_role='admin')
+
 @app.route('/admin/logs')
 def serve_admin_logs():
     """Serve admin visit logs page."""
@@ -626,6 +642,7 @@ def auth_login():
                 'email': student_user['email'],
                 'eventType': 'login',
                 'createdAt': datetime.now(timezone.utc),
+                'ipAddress': get_client_ip(),
             })
             return response
 
@@ -688,6 +705,7 @@ def student_register():
             'email': doc['email'],
             'eventType': 'register',
             'createdAt': datetime.now(timezone.utc),
+            'ipAddress': get_client_ip(),
         })
 
         return jsonify({'user': {'id': str(doc['_id']), 'email': doc['email'], 'name': doc['name']}, 'message': 'Registration complete. Please log in.'}), 201
@@ -727,6 +745,7 @@ def student_login():
             'email': user['email'],
             'eventType': 'login',
             'createdAt': datetime.now(timezone.utc),
+            'ipAddress': get_client_ip(),
         })
 
         return response
@@ -765,11 +784,40 @@ def admin_student_activity():
                     'name': event.get('name', ''),
                     'email': event.get('email', ''),
                     'eventType': event.get('eventType', ''),
+                    'ipAddress': event.get('ipAddress', '') or '',
                     'createdAt': event.get('createdAt').isoformat() if event.get('createdAt') else '',
                 }
                 for event in recent_events
             ],
         })
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+@app.route('/api/students/<student_id>', methods=['DELETE'])
+@require_auth
+def admin_delete_student(student_id):
+    """Delete a student account so the user can no longer access the website."""
+    try:
+        try:
+            oid = ObjectId(student_id)
+        except Exception:
+            return jsonify({'message': 'Invalid student id.'}), 400
+
+        student = students.find_one({'_id': oid})
+        if not student:
+            return jsonify({'message': 'Student not found.'}), 404
+
+        students.delete_one({'_id': oid})
+
+        # Clean up account activity logs linked to this student.
+        student_activity.delete_many({
+            '$or': [
+                {'studentId': oid},
+                {'email': student.get('email', '')},
+            ]
+        })
+
+        return jsonify({'ok': True, 'message': 'Student access removed successfully.'})
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
@@ -788,7 +836,7 @@ def track_visitor():
             'formId': data.get('formId', ''),
             'referrer': data.get('referrer', ''),
             'userAgent': data.get('userAgent', ''),
-            'ipAddress': request.remote_addr,
+            'ipAddress': get_client_ip(),
             'createdAt': datetime.now(timezone.utc),
         })
         
@@ -1205,7 +1253,7 @@ def create_submission():
             'formId': ObjectId(data['formId']),
             'submissionId': doc['_id'],
             'createdAt': datetime.now(timezone.utc),
-            'ipAddress': request.remote_addr,
+            'ipAddress': get_client_ip(),
         })
         return jsonify(to_client(doc)), 201
     except Exception as e:
@@ -1272,6 +1320,7 @@ def verify_submission(submission_id):
             'submissionId': sub['_id'],
             'createdAt': datetime.now(timezone.utc),
             'adminId': request.user['id'],
+            'ipAddress': get_client_ip(),
         })
 
         return jsonify({'ok': True})
@@ -1371,7 +1420,11 @@ def get_visit_logs():
                 'userEmail': v.get('email', '') or '',
                 'action': 'page_visit',
                 'page': v.get('page', ''),
+                'formId': v.get('formId', '') or '',
+                'referrer': v.get('referrer', '') or '',
+                'userAgent': v.get('userAgent', '') or '',
                 'ipAddress': v.get('ipAddress', '') or '',
+                'visitorId': v.get('visitorId', '') or '',
             }
             for v in visits
         ]
@@ -1379,6 +1432,68 @@ def get_visit_logs():
         # sort by timestamp desc
         logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         return jsonify(logs)
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@app.route('/api/visit-logs/combined', methods=['GET'])
+@require_auth
+def get_visit_logs_combined():
+    """Return visitor logs together with derived statistics for admin UI."""
+    try:
+        visits = list(visitors.find().sort('createdAt', -1).limit(1000))
+
+        logs = [
+            {
+                'timestamp': v.get('createdAt').isoformat() if v.get('createdAt') else '',
+                'userEmail': v.get('email', '') or '',
+                'action': 'page_visit',
+                'page': v.get('page', ''),
+                'formId': v.get('formId', '') or '',
+                'referrer': v.get('referrer', '') or '',
+                'userAgent': v.get('userAgent', '') or '',
+                'ipAddress': v.get('ipAddress', '') or '',
+                'visitorId': v.get('visitorId', '') or '',
+            }
+            for v in visits
+        ]
+
+        # Derive basic stats from the visit records (server-side aggregation)
+        visitor_counts = {}
+        visitors_with_forms = set()
+        referrer_counts = {}
+
+        for v in visits:
+            key = v.get('visitorId') or v.get('ipAddress') or v.get('userAgent') or ''
+            visitor_counts[key] = visitor_counts.get(key, 0) + 1
+            if v.get('formId'):
+                visitors_with_forms.add(key)
+            ref = (v.get('referrer') or 'Direct').strip() or 'Direct'
+            referrer_counts[ref] = referrer_counts.get(ref, 0) + 1
+
+        total_visitors = len(visitor_counts)
+        pageviews = len(visits)
+        active_engaged = sum(1 for c in visitor_counts.values() if c > 1)
+        bounced = sum(1 for c in visitor_counts.values() if c == 1)
+        bounce_rate = (bounced / total_visitors * 100) if total_visitors > 0 else 0
+        engagement_rate = 100 - bounce_rate if total_visitors > 0 else 0
+        conversion_rate = (len(visitors_with_forms) / total_visitors * 100) if total_visitors > 0 else 0
+
+        traffic_by_source = [{'\n_id': k, 'count': v} for k, v in sorted(referrer_counts.items(), key=lambda i: i[1], reverse=True)[:10]]
+
+        stats = {
+            'totalVisitors': total_visitors,
+            'activeEngagedUsers': active_engaged,
+            'bounceRate': round(bounce_rate, 2),
+            'engagementRate': round(engagement_rate, 2),
+            'pageviews': pageviews,
+            'conversionRate': round(conversion_rate, 2),
+            'totalTraffic': total_visitors,
+        }
+
+        # sort by timestamp desc
+        logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        return jsonify({'logs': logs, 'stats': stats, 'trafficBySource': traffic_by_source})
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 

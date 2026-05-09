@@ -112,8 +112,8 @@
         <tbody>
           ${logs.map(log => `
             <tr style="border-bottom: 1px solid #eee;">
-              <td style="padding: 0.75rem; font-size: 0.9rem;">${formatTimestamp(log.timestamp)}</td>
-              <td style="padding: 0.75rem;">${escapeHtml(log.userEmail || 'N/A')}</td>
+              <td style="padding: 0.75rem; font-size: 0.9rem;">${formatTimestamp(log.createdAt || log.timestamp)}</td>
+              <td style="padding: 0.75rem;">${escapeHtml(log.email || log.userEmail || 'N/A')}</td>
               <td style="padding: 0.75rem;">
                 <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 4px; 
                   background: ${getActionColor(log.eventType || log.action)}; font-size: 0.85rem; font-weight: 600;">
@@ -136,7 +136,8 @@
     const actionFilter = document.getElementById('filter-action').value;
     
     const filtered = allLogs.filter(log => {
-      const emailMatch = !emailFilter || (log.userEmail && log.userEmail.toLowerCase().includes(emailFilter));
+      const emailValue = (log.email || log.userEmail || '').toLowerCase();
+      const emailMatch = !emailFilter || emailValue.includes(emailFilter);
       const actionMatch = !actionFilter || (log.eventType || log.action) === actionFilter;
       return emailMatch && actionMatch;
     });
@@ -155,7 +156,7 @@
     
     const selectedDate = new Date(dateStr);
     const filtered = allLogs.filter(log => {
-      const logDate = new Date(log.timestamp);
+      const logDate = new Date(log.createdAt || log.timestamp);
       return logDate.toDateString() === selectedDate.toDateString();
     });
     
@@ -164,9 +165,8 @@
   }
 
   function updateStats(logs, users) {
-    const uniqueUsers = new Set(logs.filter(l => l.userEmail).map(l => l.userEmail)).size;
     const todayEvents = logs.filter(log => {
-      const logDate = new Date(log.timestamp);
+      const logDate = new Date(log.createdAt || log.timestamp);
       const today = new Date();
       return logDate.toDateString() === today.toDateString();
     }).length;

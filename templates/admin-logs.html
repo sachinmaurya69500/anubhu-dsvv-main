@@ -93,17 +93,27 @@
         return;
       }
 
-      // Load analytics data
-      const analyticsRes = await fetch('/api/analytics/visitors', { credentials: 'include' });
-      analyticsData = await analyticsRes.json();
-      
-      // Load all visit logs
-      const logsRes = await fetch('/api/visit-logs', { credentials: 'include' });
-      allLogs = await logsRes.json();
-      
-      renderLogs(allLogs);
-      updateStats(allLogs, analyticsData);
-      renderTrafficSources(analyticsData.trafficBySource || []);
+      // Prefer the combined endpoint (logs + stats). Fallback to separate endpoints if unavailable.
+      let combinedRes = await fetch('/api/visit-logs/combined', { credentials: 'include' });
+      if (combinedRes.ok) {
+        const combined = await combinedRes.json();
+        allLogs = combined.logs || [];
+        analyticsData = combined.stats || {};
+        renderLogs(allLogs);
+        updateStats(allLogs, analyticsData);
+        renderTrafficSources(combined.trafficBySource || buildTrafficSources(allLogs));
+      } else {
+        // Fallback for older deployments
+        const analyticsRes = await fetch('/api/analytics/visitors', { credentials: 'include' });
+        analyticsData = await analyticsRes.json();
+        
+        const logsRes = await fetch('/api/visit-logs', { credentials: 'include' });
+        allLogs = await logsRes.json();
+        
+        renderLogs(allLogs);
+        updateStats(allLogs, analyticsData);
+        renderTrafficSources(analyticsData.trafficBySource || buildTrafficSources(allLogs));
+      }
     } catch (err) {
       console.error('Error loading visit logs:', err);
       document.getElementById('logs-table').innerHTML = '<p class="empty-state">Error loading logs.</p>';
@@ -123,16 +133,20 @@
         <thead>
           <tr style="background: #f6f8fc; border-bottom: 2px solid #1e4f8a;">
             <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Timestamp</th>
+            <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Visitor ID</th>
             <th style="text-align: left; padding: 0.75rem; font-weight: 600;">User Email</th>
             <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Action</th>
             <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Page/URL</th>
+            <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Referrer</th>
+            <th style="text-align: left; padding: 0.75rem; font-weight: 600;">User Agent</th>
             <th style="text-align: left; padding: 0.75rem; font-weight: 600;">IP Address</th>
           </tr>
         </thead>
         <tbody>
           ${logs.map(log => `
             <tr style="border-bottom: 1px solid #eee;">
-              <td style="padding: 0.75rem; font-size: 0.9rem;">${new Date(log.timestamp).toLocaleString()}</td>
+              <td style="padding: 0.75rem; font-size: 0.9rem;">${formatTimestamp(log.timestamp)}</td>
+              <td style="padding: 0.75rem; font-size: 0.85rem; color: #666;">${escapeHtml(log.visitorId || 'N/A')}</td>
               <td style="padding: 0.75rem;">${escapeHtml(maskEmail(log.userEmail))}</td>
               <td style="padding: 0.75rem;">
                 <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 4px; 
@@ -141,6 +155,8 @@
                 </span>
               </td>
               <td style="padding: 0.75rem; font-size: 0.9rem;">${escapeHtml(log.page || log.url || 'N/A')}</td>
+              <td style="padding: 0.75rem; font-size: 0.9rem;">${escapeHtml(log.referrer || 'Direct')}</td>
+              <td style="padding: 0.75rem; font-size: 0.85rem; color: #555; max-width: 280px;">${escapeHtml(log.userAgent || 'N/A')}</td>
               <td style="padding: 0.75rem; font-size: 0.85rem; color: #999;">${escapeHtml(log.ipAddress || 'N/A')}</td>
             </tr>
           `).join('')}
@@ -156,13 +172,14 @@
     const actionFilter = document.getElementById('filter-action').value;
     
     const filtered = allLogs.filter(log => {
-      const emailMatch = !emailFilter || log.userEmail.toLowerCase().includes(emailFilter);
+      const emailMatch = !emailFilter || (log.userEmail || '').toLowerCase().includes(emailFilter);
       const actionMatch = !actionFilter || log.action === actionFilter;
       return emailMatch && actionMatch;
     });
     
     renderLogs(filtered);
     updateStats(filtered, analyticsData);
+    renderTrafficSources(buildTrafficSources(filtered));
   }
 
   function filterByDate() {
@@ -181,22 +198,113 @@
     
     renderLogs(filtered);
     updateStats(filtered, analyticsData);
+    renderTrafficSources(buildTrafficSources(filtered));
   }
 
   function updateStats(logs, analytics) {
-    document.getElementById('total-visitors').textContent = analytics.totalVisitors || 0;
-    document.getElementById('engaged-users').textContent = analytics.activeEngagedUsers || 0;
-    document.getElementById('bounce-rate').textContent = `${analytics.bounceRate || 0}%`;
-    document.getElementById('engagement-rate').textContent = `${analytics.engagementRate || 0}%`;
-    document.getElementById('pageviews').textContent = analytics.pageviews || 0;
-    document.getElementById('conversion-rate').textContent = `${analytics.conversionRate || 0}%`;
-    document.getElementById('total-traffic').textContent = analytics.totalTraffic || 0;
+    const derived = buildStatsFromLogs(logs);
+    const hasAnalyticsData = Number(analytics.totalVisitors || 0) > 0 || Number(analytics.pageviews || 0) > 0;
+    const merged = {
+      totalVisitors: hasAnalyticsData ? (analytics.totalVisitors || derived.totalVisitors) : derived.totalVisitors,
+      activeEngagedUsers: hasAnalyticsData ? (analytics.activeEngagedUsers || derived.activeEngagedUsers) : derived.activeEngagedUsers,
+      bounceRate: hasAnalyticsData && typeof analytics.bounceRate === 'number' ? analytics.bounceRate : derived.bounceRate,
+      engagementRate: hasAnalyticsData && typeof analytics.engagementRate === 'number' ? analytics.engagementRate : derived.engagementRate,
+      pageviews: hasAnalyticsData ? (analytics.pageviews || derived.pageviews) : derived.pageviews,
+      conversionRate: hasAnalyticsData && typeof analytics.conversionRate === 'number' ? analytics.conversionRate : derived.conversionRate,
+      totalTraffic: hasAnalyticsData ? (analytics.totalTraffic || derived.totalTraffic) : derived.totalTraffic,
+    };
+
+    // Render stat cards with icons
+    const statMap = [
+      { id: 'total-visitors', label: 'Total Visitors', value: merged.totalVisitors || 0, icon: '👥' },
+      { id: 'engaged-users', label: 'Active/Engaged Users', value: merged.activeEngagedUsers || 0, icon: '⚡' },
+      { id: 'bounce-rate', label: 'Bounce Rate', value: `${Number(merged.bounceRate || 0).toFixed(2)}%`, icon: '↩️' },
+      { id: 'engagement-rate', label: 'Engagement Rate', value: `${Number(merged.engagementRate || 0).toFixed(2)}%`, icon: '📈' },
+      { id: 'pageviews', label: 'Pageviews', value: merged.pageviews || 0, icon: '📝' },
+      { id: 'conversion-rate', label: 'Conversion Rate', value: `${Number(merged.conversionRate || 0).toFixed(2)}%`, icon: '✅' },
+      { id: 'total-traffic', label: 'Total Traffic', value: merged.totalTraffic || 0, icon: '🌐' },
+    ];
+
+    statMap.forEach(s => {
+      const el = document.getElementById(s.id);
+      if (!el) return;
+      // Replace inner HTML with an enhanced card layout if parent supports it
+      const parent = el.closest('.stat');
+      if (parent) {
+        parent.innerHTML = `
+          <div class="icon">${s.icon}</div>
+          <div class="stat-body">
+            <div class="stat-label">${s.label}</div>
+            <div class="stat-value">${s.value}</div>
+          </div>
+        `;
+      } else {
+        el.textContent = s.value;
+      }
+    });
+  }
+
+  function buildStatsFromLogs(logs) {
+    const safeLogs = Array.isArray(logs) ? logs : [];
+    const uniqueVisitors = new Map();
+    const visitorsWithForms = new Set();
+    const referrerCounts = new Map();
+
+    safeLogs.forEach((log) => {
+      const visitorKey = log.visitorId || log.ipAddress || log.userEmail || log.page || JSON.stringify(log);
+      const existing = uniqueVisitors.get(visitorKey) || 0;
+      uniqueVisitors.set(visitorKey, existing + 1);
+
+      if (log.formId) {
+        visitorsWithForms.add(visitorKey);
+      }
+
+      const referrer = (log.referrer || 'Direct').trim() || 'Direct';
+      referrerCounts.set(referrer, (referrerCounts.get(referrer) || 0) + 1);
+    });
+
+    const totalVisitors = uniqueVisitors.size;
+    const pageviews = safeLogs.length;
+    const activeEngagedUsers = Array.from(uniqueVisitors.values()).filter((count) => count > 1).length;
+    const bouncedSessions = Array.from(uniqueVisitors.values()).filter((count) => count === 1).length;
+    const bounceRate = totalVisitors > 0 ? (bouncedSessions / totalVisitors) * 100 : 0;
+    const engagementRate = totalVisitors > 0 ? 100 - bounceRate : 0;
+    const conversionRate = totalVisitors > 0 ? (visitorsWithForms.size / totalVisitors) * 100 : 0;
+
+    return {
+      totalVisitors,
+      activeEngagedUsers,
+      bounceRate,
+      engagementRate,
+      pageviews,
+      conversionRate,
+      totalTraffic: totalVisitors,
+    };
+  }
+
+  function buildTrafficSources(logs) {
+    const counts = new Map();
+    (Array.isArray(logs) ? logs : []).forEach((log) => {
+      const source = (log.referrer || 'Direct').trim() || 'Direct';
+      counts.set(source, (counts.get(source) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([source, count]) => ({ _id: source, count }));
   }
 
   function maskEmail(email) {
+    if (!email || !email.includes('@')) return 'N/A';
     // Show only first 3 chars and domain
     const [name, domain] = email.split('@');
     return name.substring(0, 3) + '***@' + domain;
+  }
+
+  function formatTimestamp(ts) {
+    if (!ts) return 'N/A';
+    return new Date(ts).toLocaleString();
   }
 
   function renderTrafficSources(sources) {
@@ -207,13 +315,22 @@
       return;
     }
 
-    const html = sources.map(source => `
-      <div class="traffic-source">
-        <span class="source-name">${escapeHtml(source._id || 'Direct')}</span>
-        <span class="source-count">${source.count}</span>
-      </div>
-    `).join('');
-    
+    // Compute proportional widths based on the largest source count
+    const max = Math.max(...sources.map(s => Number(s.count) || 0), 0);
+    const html = sources.map(source => {
+      const count = Number(source.count) || 0;
+      const pct = max > 0 ? Math.round((count / max) * 100) : 0;
+      return `
+        <div class="traffic-source">
+          <div style="display:flex; align-items:center; gap:1rem; flex:1;">
+            <div style="min-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(source._id || 'Direct')}</div>
+            <div class="bar" role="presentation" aria-hidden="true" style="flex:1; width:${pct}%; max-width:100%;"></div>
+          </div>
+          <span class="source-count">${count}</span>
+        </div>
+      `;
+    }).join('');
+
     container.innerHTML = html;
   }
 
@@ -247,31 +364,57 @@
 
   .logs-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: stretch;
+  }
+  .stat {
+    background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(250,252,255,0.8));
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--line);
   }
 
-  .stat {
-    background: #f6f8fc;
-    border-left: 4px solid #1e4f8a;
-    padding: 1.5rem;
-    border-radius: 6px;
+  .stat .icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    color: var(--brand);
+    background: linear-gradient(180deg, rgba(0,61,153,0.06), rgba(255,215,0,0.03));
+    flex: 0 0 48px;
   }
+
+  .stat-body { flex: 1; }
 
   .stat-label {
     font-size: 0.9rem;
-    color: #666;
-    font-weight: 500;
+    color: var(--muted);
+    font-weight: 600;
   }
 
   .stat-value {
-    font-size: 2rem;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--brand);
+    margin-top: 0.25rem;
+    display: block;
+  }
+
+  .stat .percent {
+    font-size: 0.95rem;
     font-weight: 700;
-    color: #1e4f8a;
-    margin-top: 0.5rem;
+    color: var(--success);
+    margin-left: 0.5rem;
   }
 
   .logs-table {
@@ -281,6 +424,19 @@
     overflow-x: auto;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   }
+
+  table thead th {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(180deg,#ffffff,#fbfdff);
+    z-index: 5;
+  }
+
+  tbody tr:nth-child(even) { background: #fbfdff; }
+
+  table tbody tr:hover { background: rgba(0,61,153,0.03); }
+
+  table th, table td { padding: 0.75rem 0.9rem; }
 
   table {
     font-size: 0.9rem;
@@ -304,6 +460,10 @@
     table td {
       padding: 0.5rem !important;
     }
+
+    .logs-table {
+      overflow-x: auto;
+    }
   }
 
   .traffic-sources {
@@ -320,6 +480,22 @@
     color: #1e4f8a;
     font-size: 1.2rem;
     margin-bottom: 1rem;
+  }
+
+  .traffic-source {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #eef3fb;
+  }
+
+  .traffic-source .bar {
+    height: 8px;
+    background: linear-gradient(90deg, var(--brand) 0%, rgba(0,61,153,0.15) 100%);
+    border-radius: 6px;
+    width: 40%;
+    margin-left: 1rem;
   }
 
   .traffic-source {

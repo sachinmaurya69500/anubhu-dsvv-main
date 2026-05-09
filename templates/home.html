@@ -85,7 +85,7 @@ Regular social services are given by the unit of National Social Service of univ
 <section class="content-section section-spacing">
   <div class="container">
     <p style="margin: 0; text-align: center; font-size: 1rem; font-weight: 600; color: var(--ink);">
-      <span data-i18n="homeVisitorsLabel">Number of visits :</span> <span id="stat-visitors" style="color: var(--accent); font-weight: 700;">0</span>
+      <span data-i18n="homeVisitorsLabel">Total visits :</span> <span id="stat-visitors" style="color: var(--accent); font-weight: 700;">0</span>
     </p>
   </div>
 </section>
@@ -327,7 +327,7 @@ Regular social services are given by the unit of National Social Service of univ
   }
 
   function updateStatistics(stats) {
-    setStatValue('stat-visitors', stats.siteVisitors ?? 0);
+    setStatValue('stat-visitors', stats.totalVisitors ?? stats.siteVisitors ?? 0);
   }
 
   function setStatValue(elementId, value) {
