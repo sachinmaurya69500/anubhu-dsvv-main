@@ -1,0 +1,364 @@
+﻿{% extends "index.html" %}
+
+{% block title %}Forms - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
+
+{% block content %}
+<section class="content-section fullwidth">
+  <div class="section-header">
+    <h2 data-i18n="formsTitle">Submit Your Experience</h2>
+    <p class="subtitle" data-i18n="formsSubtitle">Share your internship or field work experience with our community</p>
+  </div>
+
+  {% if not auth_role %}
+    <div class="alert alert-info">
+      <p data-i18n-html="formsLoginRequired">You must <a href="/auth" class="alert-link">log in</a> to submit a form.</p>
+    </div>
+  {% endif %}
+
+  <div class="forms-list">
+    <div id="forms-container" class="cards-grid">
+      <!-- Loaded dynamically from API -->
+    </div>
+  </div>
+</section>
+
+<style>
+  .content-section.fullwidth {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 2rem 0;
+    background: var(--bg);
+  }
+
+  .content-section.fullwidth .section-header,
+  .content-section.fullwidth .forms-list,
+  .content-section.fullwidth .forms-list .cards-grid,
+  .content-section.fullwidth .form-card {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  .forms-list .cards-grid { gap: 24px; }
+
+  @media (max-width: 900px) {
+    .forms-list .cards-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  let currentAuthUser = null;
+  let submittedFormIds = new Set();
+
+  (async function() {
+    try {
+      const res = await fetch('/api/forms');
+      const forms = await res.json();
+      const container = document.getElementById('forms-container');
+      const isAuthRes = await fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
+      const isAuth = Boolean(isAuthRes.role);
+      currentAuthUser = isAuthRes.user || null;
+
+      if (currentAuthUser && currentAuthUser.email) {
+        const submissionsRes = await fetch(`/api/submissions?submittedBy=${encodeURIComponent(currentAuthUser.email)}`, { credentials: 'include' });
+        if (submissionsRes.ok) {
+          const userSubmissions = await submissionsRes.json();
+          submittedFormIds = new Set((Array.isArray(userSubmissions) ? userSubmissions : []).map((submission) => String(submission.formId || '')));
+        }
+      }
+
+      if (!forms || forms.length === 0) {
+        container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--muted);">
+          <p style="font-size: 1.1rem; margin-bottom: 10px;">📋 No Active Forms</p>
+          <p>No forms are currently available for submission. Please check back later.</p>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = forms.map(form => `
+        <div class="card form-card">
+          <h3 style="margin-top: 0; color: var(--brand);">${escapeHtml(form.title)}</h3>
+          <p class="meta" style="margin: 8px 0; color: var(--gold); font-weight: 600;">
+            ${escapeHtml(form.category)} • Deadline: ${new Date(form.deadline).toLocaleDateString()}
+          </p>
+          <p>${escapeHtml(form.description)}</p>
+          <p style="margin: 15px 0 0; font-size: 0.9rem; color: var(--muted);">
+            <strong>${form.submissionCount || 0}</strong> submissions received
+          </p>
+          ${submittedFormIds.has(String(form._id || form.id || '')) ? '<p style="margin: 10px 0 0; color: var(--brand); font-weight: 600;">Already submitted</p>' : ''}
+          <button
+            class="button primary button-sm"
+            onclick="loadFormModal('${form._id || form.id}', ${submittedFormIds.has(String(form._id || form.id || '')) ? 'true' : 'false'})"
+            style="margin-top: auto;"
+            ${!isAuth || submittedFormIds.has(String(form._id || form.id || '')) ? `disabled title="${!isAuth ? 'Login required' : 'You have already submitted this form.'}"` : ''}
+          >
+            ${submittedFormIds.has(String(form._id || form.id || '')) ? 'Submitted' : 'Submit Response'}
+          </button>
+        </div>
+      `).join('');
+    } catch (err) {
+      console.error('Error loading forms:', err);
+      document.getElementById('forms-container').innerHTML = '<p style="color: var(--muted);">Error loading forms. Please try again later.</p>';
+    }
+  })();
+
+  function loadFormModal(formId, alreadySubmitted = false) {
+    if (alreadySubmitted) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    modalContent.style.maxWidth = '600px';
+    modalContent.innerHTML = `
+      <button class="modal-close" type="button" onclick="closeModal(event)" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 28px; cursor: pointer; color: var(--ink);">&times;</button>
+      
+      <h3 style="margin: 0 0 8px 0; color: var(--brand); font-size: 1.5rem;">Share Your Story</h3>
+      <p style="margin: 0 0 24px 0; color: var(--muted);">Help us inspire others by sharing your internship experience</p>
+      
+      <form id="submission-form" enctype="multipart/form-data" onsubmit="handleSubmit(event, '${formId}')">
+        
+        <!-- Personal Information Section -->
+        <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; background: var(--surface);">
+          <legend style="font-weight: 700; color: var(--ink); padding: 0 8px;">Your Information</legend>
+          
+          <div class="form-group">
+            <label for="studentName" style="font-weight: 600;">Student Name *</label>
+            <input type="text" id="studentName" name="studentName" placeholder="Full name" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+          </div>
+          
+          <div class="form-group">
+            <label for="email" style="font-weight: 600;">Email *</label>
+            <input type="email" id="email" name="email" placeholder="your.email@example.com" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+          </div>
+          
+          <div class="form-group">
+            <label for="rollNumber" style="font-weight: 600;">Roll Number *</label>
+            <input type="text" id="rollNumber" name="rollNumber" placeholder="Your roll number" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+          </div>
+        </fieldset>
+
+        <!-- Academic Information Section -->
+        <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; background: var(--surface);">
+          <legend style="font-weight: 700; color: var(--ink); padding: 0 8px;">Academic Details</legend>
+          
+          <div class="form-group">
+            <label for="programme" style="font-weight: 600;">Programme/Course *</label>
+            <input type="text" id="programme" name="programme" placeholder="e.g. B.Tech CSE, M.Sc Biology" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+          </div>
+        </fieldset>
+
+        <!-- Experience Information Section -->
+        <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; background: var(--surface);">
+          <legend style="font-weight: 700; color: var(--ink); padding: 0 8px;">Internship Experience</legend>
+          
+          <div class="form-group">
+            <label for="organization" style="font-weight: 600;">Place of Internship *</label>
+            <input type="text" id="organization" name="organization" placeholder="e.g. Location" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+          </div>
+          
+          <div class="form-group">
+            <label for="mentor" style="font-weight: 600;">Mentor/Supervisor *</label>
+            <input type="text" id="mentor" name="mentor" placeholder="Name of your supervisor" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+          </div>
+          
+          <div class="form-group">
+            <label for="duration" style="font-weight: 600;">Duration *</label>
+            <input type="text" id="duration" name="duration" placeholder="e.g. 6 weeks, 2 months, June-August 2025" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+          </div>
+          
+          <div class="form-group">
+            <label for="summary" style="font-weight: 600;">Your Experience Summary *</label>
+            <textarea id="summary" name="summary" placeholder="Describe your internship experience, what you learned, key achievements, and highlights..." rows="8" required style="width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: inherit; font-size: 1rem; resize: vertical;"></textarea>
+            <p style="margin: 6px 0 0; font-size: 0.85rem; color: var(--muted);">Share your story to inspire others</p>
+          </div>
+        </fieldset>
+
+        <!-- Media Section -->
+        <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; background: var(--surface);">
+          <legend style="font-weight: 700; color: var(--ink); padding: 0 8px;">Your Photos</legend>
+          
+          <div class="form-group">
+            <label for="photo" style="font-weight: 600; display: block; margin-bottom: 8px;">Profile Photo (Required) *</label>
+            <div style="padding: 16px; border: 2px dashed var(--accent-light); border-radius: var(--radius-sm); text-align: center; cursor: pointer; background: rgba(var(--accent-rgb, 59, 130, 246), 0.02);" onclick="document.getElementById('photo').click();">
+              <p style="margin: 0 0 6px; color: var(--ink); font-weight: 500;">Click to upload or drag and drop</p>
+              <p style="margin: 0; font-size: 0.85rem; color: var(--muted);">JPG, PNG, or WEBP under 2MB</p>
+            </div>
+            <input type="file" id="photo" name="photo" accept="image/*" required style="display: none;" />
+            <p id="photo-name" style="margin: 8px 0 0; font-size: 0.9rem; color: var(--brand); font-weight: 500; display: none;"></p>
+          </div>
+          
+          <div class="form-group">
+            <label for="gallery" style="font-weight: 600; display: block; margin-bottom: 8px;">Experience Photos (Optional - up to 5 images)</label>
+            <div style="padding: 16px; border: 2px dashed var(--accent-light); border-radius: var(--radius-sm); text-align: center; cursor: pointer; background: rgba(var(--accent-rgb, 59, 130, 246), 0.02);" onclick="document.getElementById('gallery').click();">
+              <p style="margin: 0 0 6px; color: var(--ink); font-weight: 500;">Click to upload or drag and drop</p>
+              <p style="margin: 0; font-size: 0.85rem; color: var(--muted);">Add multiple photos from your experience (JPG, PNG, WEBP under 2MB each)</p>
+            </div>
+            <input type="file" id="gallery" name="gallery" accept="image/*" multiple style="display: none;" />
+            <p id="gallery-meta" style="margin: 8px 0 0; font-size: 0.85rem; color: var(--muted);"></p>
+          </div>
+        </fieldset>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+          <button type="submit" class="button primary" style="flex: 1;">Submit Your Experience</button>
+          <button type="button" class="button secondary" onclick="closeModal(event)" style="flex: 1;">Cancel</button>
+        </div>
+      </form>
+    `;
+
+    modal.appendChild(modalContent);
+    modal.onclick = (e) => { if (e.target === modal) closeModal(e); };
+    document.body.appendChild(modal);
+
+    // File upload handlers
+    document.getElementById('photo').addEventListener('change', function(e) {
+      const fileName = e.target.files[0]?.name;
+      const photoName = document.getElementById('photo-name');
+      if (fileName) {
+        photoName.textContent = '✓ ' + fileName;
+        photoName.style.display = 'block';
+      }
+    });
+
+    document.getElementById('gallery').addEventListener('change', function(e) {
+      const count = e.target.files.length;
+      const metaEl = document.getElementById('gallery-meta');
+      if (count > 0) {
+        metaEl.textContent = `✓ ${count} file${count !== 1 ? 's' : ''} selected`;
+      }
+    });
+  }
+
+  function handleSubmit(event, formId) {
+    event.preventDefault();
+    const form = document.getElementById('submission-form');
+    const fileInput = form.querySelector('#photo');
+    const file = fileInput ? fileInput.files[0] : null;
+    if (!file) {
+      alert('Please upload a profile photo before submitting.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('formId', formId);
+    formData.append('studentName', form.studentName.value);
+    formData.append('email', form.email.value);
+    formData.append('rollNumber', form.rollNumber.value);
+    formData.append('programme', form.programme.value);
+    formData.append('organization', form.organization.value);
+    formData.append('mentor', form.mentor.value);
+    formData.append('duration', form.duration.value);
+    formData.append('summary', form.summary.value);
+    formData.append('photo', file);
+
+    const galleryInput = form.querySelector('#gallery');
+    if (galleryInput && galleryInput.files && galleryInput.files.length > 0) {
+      for (let i = 0; i < Math.min(galleryInput.files.length, 5); i++) {
+        formData.append('gallery', galleryInput.files[i]);
+      }
+    }
+
+    fetch('/api/submissions', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    })
+    .then(r => {
+      if (!r.ok) {
+        return r.json().then(err => { throw new Error(err.message || 'Submission failed'); });
+      }
+      return r.json();
+    })
+    .then(() => {
+      alert('✅ Submission received! It will be reviewed by our team.');
+      closeModal();
+      setTimeout(() => location.reload(), 500);
+    })
+    .catch(err => {
+      console.error('Error submitting form:', err);
+      alert('❌ Error: ' + (err.message || 'Please check all fields and try again.'));
+    });
+  }
+
+  function closeModal(event) {
+    if (event) event.preventDefault();
+    const modal = document.querySelector('.modal');
+    if (modal) modal.remove();
+  }
+
+  document.addEventListener('change', function(e) {
+    if (e.target.id === 'gallery') {
+      const meta = document.getElementById('gallery-meta');
+      if (!e.target.files || e.target.files.length === 0) {
+        meta.textContent = '';
+        return;
+      }
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const maxSize = 2 * 1024 * 1024;
+      let validCount = 0;
+      let totalSize = 0;
+      for (let i = 0; i < Math.min(e.target.files.length, 5); i++) {
+        const file = e.target.files[i];
+        if (allowedTypes.includes(file.type) && file.size <= maxSize) {
+          validCount++;
+          totalSize += file.size;
+        }
+      }
+      if (e.target.files.length > 5) {
+        meta.textContent = `Selected ${e.target.files.length} files (max 5 allowed). Using first 5. Total: ${Math.round(totalSize / 1024)} KB`;
+      } else {
+        meta.textContent = `${validCount} valid image${validCount !== 1 ? 's' : ''} • ${Math.round(totalSize / 1024)} KB`;
+      }
+    }
+  });
+</script>
+
+<style>
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .modal-content {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 300ms ease;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .form-card { position: relative; overflow: hidden; }
+  .forms-list .cards-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; align-items: stretch; }
+  .forms-list .form-card { width: 100%; max-width: none; height: auto; min-height: 340px; padding: 28px; display: flex; flex-direction: column; gap: 12px; }
+  .forms-list .form-card p { line-height: 1.65; }
+  .forms-list .form-card .button { margin-top: auto; align-self: flex-start; }
+
+  @media (max-width: 768px) {
+    .modal-content { padding: 25px; width: 95%; }
+    .forms-list .cards-grid { grid-template-columns: 1fr; gap: 18px; }
+    .forms-list .form-card { min-height: auto; padding: 22px; }
+    .modal { padding: 10px; }
+  }
+</style>
+{% endblock %}

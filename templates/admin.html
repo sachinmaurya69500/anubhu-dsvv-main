@@ -1,0 +1,778 @@
+{% extends "index.html" %}
+
+{% block title %}Admin Panel - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
+
+{% block content %}
+<section class="content-section fullwidth">
+  <div class="section-header">
+    <h2>Admin Panel</h2>
+    <p class="subtitle">Manage forms, verify submissions, and view analytics</p>
+  </div>
+
+  {% if auth_role != 'admin' %}
+    <div style="background: #fef2f2; padding: 20px; border-radius: 12px; border-left: 4px solid #dc3545; margin-bottom: 20px;">
+      <p style="margin: 0; color: #721c24; font-weight: 600;">Access denied. You must be an administrator to view this page.</p>
+      <a href="/" style="color: #721c24; text-decoration: underline; display: inline-block; margin-top: 10px;">Return to Home</a>
+    </div>
+  {% else %}
+    <div class="admin-nav">
+      <a href="/admin" class="tab active">Dashboard</a>
+      <a href="/admin/verify" class="tab">Verify Submissions</a>
+      <a href="/admin/logs" class="tab">Visit Logs</a>
+      <a href="/admin/visitors" class="tab">User Logs</a>
+    </div>
+
+    <div class="admin-dashboard">
+      <div class="dashboard-grid-3">
+        <div class="card stat-card">
+          <h4>Total Submissions</h4>
+          <p class="stat-number" id="total-submissions">0</p>
+        </div>
+        <div class="card stat-card">
+          <h4>Pending Review</h4>
+          <p class="stat-number pending" id="pending-submissions">0</p>
+        </div>
+        <div class="card stat-card">
+          <h4>Approved</h4>
+          <p class="stat-number approved" id="approved-submissions">0</p>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Recent Submissions</h3>
+        <div id="recent-submissions" class="submissions-table">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h3 style="margin: 0;">Forms Management</h3>
+          <button class="button primary" onclick="openCreateFormModal()">+ Create New Form</button>
+        </div>
+        <div id="forms-list" class="forms-table">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+<style>
+  #forms-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 24px;
+    margin-top: 16px;
+  }
+
+  @media (max-width: 900px) {
+    #forms-list {
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    #forms-list {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+</style>
+
+<script>
+  (async function() {
+    try {
+      const authRes = await fetch('/api/auth/me', { credentials: 'include' });
+      const auth = await authRes.json();
+      
+      if (auth.role !== 'admin') {
+        document.querySelector('.admin-dashboard').style.display = 'none';
+        return;
+      }
+
+      // Load stats
+      const subsRes = await fetch('/api/submissions');
+      const submissions = await subsRes.json();
+      
+      const total = submissions.length;
+      const pending = submissions.filter(s => s.status === 'pending').length;
+      const approved = submissions.filter(s => s.status === 'approved').length;
+      
+      document.getElementById('total-submissions').textContent = total;
+      document.getElementById('pending-submissions').textContent = pending;
+      document.getElementById('approved-submissions').textContent = approved;
+
+      // Load recent submissions
+      const recentList = document.getElementById('recent-submissions');
+      if (submissions.length > 0) {
+        recentList.innerHTML = `
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 2px solid #1e4f8a;">
+                <th style="text-align: left; padding: 0.75rem;">Student</th>
+                <th style="text-align: left; padding: 0.75rem;">Organization</th>
+                <th style="text-align: left; padding: 0.75rem;">Status</th>
+                <th style="text-align: left; padding: 0.75rem;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${submissions.slice(0, 10).map(sub => `
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 0.75rem; display: flex; align-items: center; gap: 12px;">
+                    <div style="width:36px; height:36px; border-radius:50%; overflow:hidden; background:#f1f1f1; display:inline-flex; align-items:center; justify-content:center;">
+                      ${renderAvatarMarkup(resolveAvatarSrc(sub.avatarUrl || sub.thumbnail || sub.photo), (sub.studentName || '').split(' ').map(s=>s[0]).slice(0,2).join(''), 'avatar')}
+                    </div>
+                    <div>${escapeHtml(sub.studentName)}</div>
+                  </td>
+                  <td style="padding: 0.75rem;">${escapeHtml(sub.organization)}</td>
+                  <td style="padding: 0.75rem;">
+                    <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 4px; 
+                      background: ${sub.status === 'approved' ? '#d4edda' : sub.status === 'rejected' ? '#f8d7da' : '#fff3cd'};
+                      color: ${sub.status === 'approved' ? '#155724' : sub.status === 'rejected' ? '#721c24' : '#856404'};
+                      font-size: 0.85rem; font-weight: 600;">
+                      ${sub.status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td style="padding: 0.75rem; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <a href="/admin/verify?id=${sub.id}" class="button secondary button-sm">Review</a>
+                    <button class="button secondary button-sm" onclick="openAvatarModal('${sub.id}', '${escapeHtml(sub.studentName)}', '${resolveAvatarSrc(sub.avatarUrl || sub.thumbnail || sub.photo)}')">Upload Avatar</button>
+                    <button class="button primary button-sm" onclick="setFeatured('${sub.id}')">Make Featured</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        recentList.innerHTML = '<p class="empty-state">No submissions yet.</p>';
+      }
+
+      // Load forms
+      const formsRes = await fetch('/api/admin/forms', { credentials: 'include' });
+      const forms = await formsRes.json();
+      const formsList = document.getElementById('forms-list');
+      if (forms.length > 0) {
+        formsList.innerHTML = forms.map(form => {
+          const createdDate = form.createdAt ? new Date(form.createdAt).toLocaleDateString() : 'N/A';
+          const deadlineDate = form.deadline ? new Date(form.deadline).toLocaleDateString() : 'N/A';
+          const statusColor = form.status === 'active' ? '#28a745' : '#dc3545';
+          const statusBg = form.status === 'active' ? '#d4edda' : '#f8d7da';
+          return `
+          <div class="card form-card" style="padding: 24px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; min-height: 520px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+              <div style="flex: 1; margin-right: 12px;">
+                <h4 style="margin: 0 0 8px; color: #1e4f8a; font-size: 1.1rem;">${escapeHtml(form.title)}</h4>
+                <div style="display: inline-block; padding: 6px 12px; background: ${statusBg}; color: ${statusColor}; font-size: 0.8rem; font-weight: 600; border-radius: 4px; text-transform: uppercase;">
+                  ${form.status ? form.status.toUpperCase() : 'ACTIVE'}
+                </div>
+              </div>
+            </div>
+            
+            <p style="margin: 0 0 16px; color: #333; line-height: 1.6; font-size: 0.95rem;">${escapeHtml(form.description)}</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; padding: 16px; background: white; border-radius: 6px; flex: 1;">
+              <div>
+                <p style="margin: 0 0 6px; font-size: 0.85rem; color: #666; font-weight: 600;">Category</p>
+                <p style="margin: 0; color: #333; font-size: 0.95rem;">${escapeHtml(form.category)}</p>
+              </div>
+              <div>
+                <p style="margin: 0 0 6px; font-size: 0.85rem; color: #666; font-weight: 600;">Deadline</p>
+                <p style="margin: 0; color: #333; font-size: 0.95rem;">${deadlineDate}</p>
+              </div>
+              <div>
+                <p style="margin: 0 0 6px; font-size: 0.85rem; color: #666; font-weight: 600;">Submissions</p>
+                <p style="margin: 0; color: #333; font-weight: 700; font-size: 1.2rem;">${form.submissionCount || 0}</p>
+              </div>
+              <div>
+                <p style="margin: 0 0 6px; font-size: 0.85rem; color: #666; font-weight: 600;">Created</p>
+                <p style="margin: 0; color: #333; font-size: 0.95rem;">${createdDate}</p>
+              </div>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top: auto; flex-wrap: wrap;">
+              <button class="button secondary button-sm" onclick="editForm('${form.id}')" style="flex: 1; min-width: 80px;">Edit</button>
+              <button class="button secondary button-sm" onclick="deleteForm('${form.id}')" style="flex: 1; min-width: 80px;">Delete</button>
+              <button class="button primary button-sm" onclick="viewFormSubmissions('${form.id}', '${escapeHtml(form.title)}')" style="flex: 1; min-width: 120px;">View Submissions</button>
+            </div>
+          </div>
+        `;
+        }).join('');
+      }
+    } catch (err) {
+      console.error('Error loading admin dashboard:', err);
+    }
+  })();
+
+  async function setFeatured(subId) {
+    if (!confirm('Mark this submission as featured on the home page?')) return;
+    try {
+      const res = await fetch(`/api/submissions/${subId}/feature`, { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to set featured');
+      alert('Submission marked as featured.');
+      location.reload();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  function openCreateFormModal() {
+    showFormModal(null);
+  }
+
+  function showFormModal(formId) {
+    const isEdit = formId !== null;
+    let form = null;
+
+    if (isEdit) {
+      // Fetch form data for editing
+      fetch(`/api/forms`)
+        .then(r => r.json())
+        .then(forms => {
+          form = forms.find(f => f.id === formId || f._id === formId);
+          displayFormModal(form, isEdit);
+        })
+        .catch(err => alert('Error loading form'));
+    } else {
+      displayFormModal(null, false);
+    }
+  }
+
+  function displayFormModal(form, isEdit) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6); display: flex; align-items: center;
+      justify-content: center; z-index: 2000; padding: 20px;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: white; border-radius: 12px; padding: 40px;
+      max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    `;
+
+    content.innerHTML = `
+      <h2 style="margin-top: 0; color: #1e4f8a;">${isEdit ? 'Edit Form' : 'Create New Form'}</h2>
+      <form id="form-modal" onsubmit="handleFormSubmit(event, '${form ? form.id || form._id : ''}', ${isEdit})">
+        <div class="form-group">
+          <label for="title">Form Title *</label>
+          <input type="text" id="title" name="title" required value="${form ? escapeHtml(form.title) : ''}" />
+        </div>
+        <div class="form-group">
+          <label for="category">Category *</label>
+          <input type="text" id="category" name="category" required placeholder="e.g. Internship, Research" value="${form ? escapeHtml(form.category) : ''}" />
+        </div>
+        <div class="form-group">
+          <label for="description">Description *</label>
+          <textarea id="description" name="description" rows="4" required style="padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 1rem; width: 100%; resize: vertical;">${form ? escapeHtml(form.description) : ''}</textarea>
+        </div>
+        <div class="form-group">
+          <label for="deadline">Deadline *</label>
+          <input type="date" id="deadline" name="deadline" required value="${form ? (form.deadline || '').split('T')[0] : ''}" />
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="submit" class="button primary">
+            ${isEdit ? 'Update Form' : 'Create Form'}
+          </button>
+          <button type="button" class="button secondary" onclick="this.closest('div').parentElement.parentElement.remove();">
+            Cancel
+          </button>
+        </div>
+      </form>
+    `;
+
+    modal.appendChild(content);
+    modal.onclick = (e) => {
+      if (e.target === modal) modal.remove();
+    };
+
+    document.body.appendChild(modal);
+  }
+
+  function handleFormSubmit(event, formId, isEdit) {
+    event.preventDefault();
+    const form = event.target;
+    const data = {
+      title: form.title.value,
+      category: form.category.value,
+      description: form.description.value,
+      deadline: form.deadline.value,
+      status: 'active',
+    };
+
+    const url = isEdit ? `/api/forms/${formId}` : '/api/forms';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    fetch(url, {
+      method,
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('Error saving form');
+      return r.json();
+    })
+    .then(() => {
+      alert(isEdit ? 'Form updated successfully!' : 'Form created successfully!');
+      location.reload();
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Error saving form: ' + err.message);
+    });
+  }
+
+  function editForm(formId) {
+    showFormModal(formId);
+  }
+
+  function deleteForm(formId) {
+    if (confirm('Are you sure you want to delete this form? All related submissions will also be deleted.')) {
+      fetch(`/api/forms/${formId}`, { method: 'DELETE', credentials: 'include' })
+        .then(r => {
+          if (!r.ok) throw new Error('Delete failed');
+          alert('Form deleted successfully');
+          location.reload();
+        })
+        .catch(err => {
+          console.error(err);
+          alert('Error deleting form: ' + err.message);
+        });
+    }
+  }
+
+  // Avatar upload modal for admin
+  function openAvatarModal(subId, studentName, currentAvatar) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:2000; padding:20px;`;
+
+    const box = document.createElement('div');
+    box.style.cssText = `background:white; padding:24px; border-radius:12px; width:100%; max-width:420px;`;
+    box.innerHTML = `
+      <h3 style="margin-top:0; color: var(--brand);">Upload Avatar for ${studentName}</h3>
+      <form id="avatar-upload-form">
+        <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+          <div style="width:64px; height:64px; border-radius:50%; overflow:hidden; background:#f1f1f1; display:flex; align-items:center; justify-content:center;" id="avatar-preview-wrap">${renderAvatarMarkup(currentAvatar, (studentName||'').split(' ').map(s=>s[0]).slice(0,2).join(''), 'avatar')}</div>
+            <div style="flex:1;">
+            <input type="file" id="avatar-file" accept="image/*" aria-label="Choose avatar image" />
+            <p style="margin:6px 0 0; font-size:0.85rem; color:#666;">Recommended: square JPG/PNG under 2MB.</p>
+            <p id="avatar-file-meta" style="margin:4px 0 0; font-size:0.8rem; color:#888;"></p>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+          <button type="button" class="button secondary" id="avatar-cancel">Cancel</button>
+          <button type="button" class="button primary" id="avatar-upload-btn">Upload</button>
+        </div>
+      </form>
+    `;
+
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    document.getElementById('avatar-cancel').onclick = () => modal.remove();
+
+    const fileInput = document.getElementById('avatar-file');
+    fileInput.onchange = async () => {
+      const meta = document.getElementById('avatar-file-meta');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        meta.textContent = '';
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const maxSize = 2 * 1024 * 1024;
+      if (!allowedTypes.includes(file.type)) {
+        alert('Invalid file type. Please upload JPG, PNG, or WEBP images.');
+        fileInput.value = '';
+        meta.textContent = '';
+        return;
+      }
+      if (file.size > maxSize) {
+        alert('File too large. Please upload an image smaller than 2 MB.');
+        fileInput.value = '';
+        meta.textContent = '';
+        return;
+      }
+
+      const previewImage = document.getElementById('avatar-preview-image');
+      const fallback = document.getElementById('avatar-preview-fallback');
+      const objectUrl = URL.createObjectURL(file);
+
+      if (previewImage) {
+        previewImage.src = objectUrl;
+      } else if (fallback) {
+        fallback.outerHTML = `<img id="avatar-preview-image" src="${objectUrl}" alt="Avatar preview" style="width:100%; height:100%; object-fit:cover;">`;
+      }
+
+      const sizeKb = Math.round(file.size / 1024);
+      meta.textContent = `${file.name} • ${sizeKb} KB`;
+    };
+
+    document.getElementById('avatar-upload-btn').onclick = async () => {
+      if (!fileInput.files || fileInput.files.length === 0) { alert('Please choose an image file.'); return; }
+      const file = fileInput.files[0];
+
+      // Client-side validation
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const maxSize = 2 * 1024 * 1024; // 2 MB
+      if (!allowedTypes.includes(file.type)) {
+        alert('Invalid file type. Please upload JPG, PNG, or WEBP images.');
+        return;
+      }
+      if (file.size > maxSize) {
+        alert('File too large. Please upload an image smaller than 2 MB.');
+        return;
+      }
+
+      const optimizedFile = await optimizeAvatarFile(file);
+      const formData = new FormData();
+      formData.append('photo', optimizedFile);
+
+      const uploadBtn = document.getElementById('avatar-upload-btn');
+      uploadBtn.disabled = true;
+      const originalText = uploadBtn.textContent;
+      uploadBtn.textContent = 'Uploading...';
+
+      try {
+        const res = await fetch(`/api/submissions/${subId}/avatar`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Upload failed');
+        alert('Avatar uploaded successfully.');
+        modal.remove();
+        location.reload();
+      } catch (err) {
+        console.error(err);
+        alert('Error uploading avatar: ' + err.message);
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = originalText;
+      }
+    };
+
+    async function optimizeAvatarFile(file) {
+      const imageBitmap = await createImageBitmap(file);
+      const maxDim = 512;
+      const ratio = Math.min(1, maxDim / Math.max(imageBitmap.width, imageBitmap.height));
+      const targetWidth = Math.max(1, Math.round(imageBitmap.width * ratio));
+      const targetHeight = Math.max(1, Math.round(imageBitmap.height * ratio));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
+
+      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      const quality = outputType === 'image/jpeg' ? 0.85 : undefined;
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob((b) => resolve(b), outputType, quality);
+      });
+
+      if (!blob) return file;
+      const extension = outputType === 'image/png' ? 'png' : 'jpg';
+      const baseName = (file.name || 'avatar').replace(/\.[^/.]+$/, '');
+      return new File([blob], `${baseName}_optimized.${extension}`, { type: outputType });
+    }
+  }
+
+  function resolveAvatarSrc(value) {
+    const src = String(value || '').trim();
+    if (!src) return '';
+    if (/^(https?:)?\/\//.test(src) || src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('/api/uploads/avatars/') || src.startsWith('/static/')) {
+      return src;
+    }
+    return `/api/uploads/avatars/${encodeURIComponent(src)}`;
+  }
+
+  function renderAvatarMarkup(src, initials, altText) {
+    if (!src) {
+      return `<span style="font-weight:700; color:#333;">${escapeHtml(initials)}</span>`;
+    }
+
+    const escapedSrc = escapeHtml(src);
+    const escapedAlt = escapeHtml(altText);
+    const escapedInitials = String(initials || '').replaceAll('"', '&quot;');
+    const fallbackScript = `this.onerror=null;this.remove();this.parentElement.textContent="${escapedInitials}";`;
+    return `<img src="${escapedSrc}" alt="${escapedAlt}" style="width:100%; height:100%; object-fit:cover;" onerror='${fallbackScript}'>`;
+  }
+
+  // Open modal showing all submissions for a specific form (admin)
+  async function viewFormSubmissions(formId, formTitle) {
+    try {
+      const res = await fetch('/api/submissions', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load submissions');
+      const all = await res.json();
+      const list = (Array.isArray(all) ? all : [])
+        .filter(s => String(s.formId || s.formId || '') === String(formId) || String(s.formId || '') === String(formId))
+        .filter(s => String(s.status || '').toLowerCase() !== 'rejected');
+
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:2100; padding:20px;';
+      const box = document.createElement('div');
+      box.style.cssText = 'background:white; width:100%; max-width:900px; border-radius:12px; padding:20px; max-height:90vh; overflow:auto;';
+      box.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="margin:0;">Submissions for: ${escapeHtml(formTitle || formId)}</h3><button class="button secondary" id="close-form-submissions">Close</button></div>`;
+
+      if (list.length === 0) {
+        box.innerHTML += '<p class="empty-state">No submissions for this form.</p>';
+      } else {
+        box.innerHTML += `<table style="width:100%; border-collapse:collapse;"><thead><tr style="border-bottom:2px solid #eee;"><th style="text-align:left; padding:8px">Student</th><th style="text-align:left; padding:8px">Roll</th><th style="text-align:left; padding:8px">Status</th><th style="text-align:left; padding:8px">Actions</th></tr></thead><tbody>`;
+        for (const s of list) {
+          const isApproved = String(s.status || '').toLowerCase() === 'approved';
+          const actionsHtml = isApproved
+            ? `<button class="button danger button-sm" onclick="adminDeleteSubmission('${s.id}')">Delete</button>`
+            : `<button class="button" onclick="adminVerifySubmission('${s.id}','approved')">Approve</button><button class="button" onclick="adminVerifySubmission('${s.id}','rejected')">Reject</button>`;
+          box.innerHTML += `<tr style="border-bottom:1px solid #f1f1f1;"><td style="padding:10px;">${escapeHtml(s.studentName)}<div style="color:#666; font-size:0.85rem;">${escapeHtml(s.email || '')}</div></td><td style="padding:10px;">${escapeHtml(s.rollNumber || '')}</td><td style="padding:10px;">${escapeHtml(s.status || '')}</td><td style="padding:10px; display:flex; gap:8px; flex-wrap:wrap;"><button class="button secondary button-sm" onclick="openSubmissionDetail('${s.id}')">Details</button><a class="button primary button-sm" href="/api/submissions/${s.id}/pdf">PDF</a>${actionsHtml}</td></tr>`;
+        }
+        box.innerHTML += '</tbody></table>';
+      }
+
+      modal.appendChild(box);
+      document.body.appendChild(modal);
+      document.getElementById('close-form-submissions').onclick = () => modal.remove();
+
+      // register helper: open detail view
+      window.openSubmissionDetail = function(subId) {
+        renderSubmissionDetails(subId);
+      };
+    } catch (err) {
+      alert('Error: ' + (err.message || 'Unable to load submissions'));
+    }
+  }
+
+  // Render a full submission detail modal
+  async function renderSubmissionDetails(subId) {
+    try {
+      const res = await fetch('/api/submissions', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load submissions');
+      const all = await res.json();
+      const submission = (Array.isArray(all) ? all : []).find(s => String(s.id || s._id || '') === String(subId));
+      if (!submission) return alert('Submission not found');
+
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:2200; padding:20px;';
+      const box = document.createElement('div');
+      box.style.cssText = 'background:white; width:100%; max-width:760px; border-radius:12px; padding:20px; max-height:90vh; overflow:auto;';
+      box.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><h3 style="margin:0;">${escapeHtml(submission.studentName || 'Submission')}</h3><div style="display:flex; gap:8px;"><a class="button secondary button-sm" href="/api/submissions/${submission.id}/pdf">Download PDF</a><button class="button" id="close-sub-detail">Close</button></div></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div><strong>Roll:</strong> ${escapeHtml(submission.rollNumber || '')}</div>
+          <div><strong>Program:</strong> ${escapeHtml(submission.programme || '')}</div>
+          <div><strong>Organization:</strong> ${escapeHtml(submission.organization || '')}</div>
+          <div><strong>Mentor:</strong> ${escapeHtml(submission.mentor || '')}</div>
+          <div><strong>Duration:</strong> ${escapeHtml(submission.duration || '')}</div>
+          <div><strong>Submitted:</strong> ${escapeHtml(submission.submittedAt || submission.createdAt || '')}</div>
+        </div>
+        <div style="margin-bottom:12px;"><strong>Summary</strong><p style="white-space:pre-wrap;">${escapeHtml(submission.summary || '')}</p></div>
+        ${submission.gallery && submission.gallery.length ? '<div style="margin-bottom:12px;"><strong>Gallery</strong><div style="display:flex; gap:8px; flex-wrap:wrap;">' + submission.gallery.map(g=>`<img src="${g}" alt="Experience photo" style="width:120px; height:80px; object-fit:cover; border-radius:8px;">`).join('') + '</div></div>' : ''}
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+          ${String(submission.status || '').toLowerCase() === 'approved'
+            ? `<button class="button danger" onclick="adminDeleteSubmission('${submission.id}')">Delete</button>`
+            : `<button class="button primary" onclick="adminVerifySubmission('${submission.id}','approved')">Approve</button><button class="button" onclick="adminVerifySubmission('${submission.id}','rejected')">Reject</button>`}
+        </div>
+      `;
+
+      modal.appendChild(box);
+      document.body.appendChild(modal);
+      document.getElementById('close-sub-detail').onclick = () => modal.remove();
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    } catch (err) {
+      alert('Error loading submission: ' + (err.message || ''));
+    }
+  }
+
+  async function adminVerifySubmission(subId, status) {
+    if (!confirm(`Are you sure you want to mark as ${status}?`)) return;
+    try {
+      const res = await fetch(`/api/submissions/${subId}/verify`, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Verify failed');
+      alert('Submission updated.');
+      location.reload();
+    } catch (err) {
+      alert('Error: ' + (err.message || ''));
+    }
+  }
+
+  async function adminDeleteSubmission(subId) {
+    if (!confirm('Are you sure you want to delete this submission?')) return;
+    try {
+      const res = await fetch(`/api/submissions/${subId}`, { method: 'DELETE', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Delete failed');
+      alert('Submission deleted.');
+      location.reload();
+    } catch (err) {
+      alert('Error: ' + (err.message || ''));
+    }
+  }
+</script>
+
+<style>
+  .content-section.fullwidth {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 2rem 0;
+    background: var(--bg);
+  }
+
+  .content-section.fullwidth .section-header,
+  .content-section.fullwidth .admin-dashboard,
+  .content-section.fullwidth .admin-section,
+  .content-section.fullwidth .forms-table,
+  .content-section.fullwidth .submissions-table {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  .dashboard-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 900px) { .dashboard-grid-3 { grid-template-columns: 1fr; } }
+</style>
+
+<style>
+  .admin-nav {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid var(--line);
+    background: var(--surface);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .admin-nav .tab {
+    padding: 14px 24px;
+    text-decoration: none;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+    transition: all 200ms ease;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .admin-nav .tab:hover {
+    color: var(--brand);
+  }
+
+  .admin-nav .tab.active {
+    color: white;
+    background: var(--brand);
+    border-bottom-color: var(--gold);
+  }
+
+  .dashboard-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .stat-card {
+    background: linear-gradient(135deg, var(--brand-soft) 0%, white 100%);
+    border-left: 4px solid var(--brand);
+    padding: 30px;
+    text-align: center;
+  }
+
+  .stat-card h4 {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .stat-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--brand);
+    margin: 0;
+  }
+
+  .stat-number.pending {
+    color: var(--gold);
+  }
+
+  .stat-number.approved {
+    color: #28a745;
+  }
+
+  .admin-section {
+    margin-bottom: 40px;
+  }
+
+  .admin-section h3 {
+    margin: 0 0 20px;
+    color: var(--brand);
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  .submissions-table {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .submissions-table table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .submissions-table thead {
+    background: var(--brand-soft);
+  }
+
+  .submissions-table th {
+    text-align: left;
+    padding: 16px;
+    color: var(--brand);
+    font-weight: 700;
+    border-bottom: 2px solid var(--brand);
+  }
+
+  .submissions-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .submissions-table tbody tr:hover {
+    background: var(--bg);
+  }
+
+  .forms-table {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .admin-dashboard {
+    animation: fadeUp 400ms ease;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+{% endblock %}

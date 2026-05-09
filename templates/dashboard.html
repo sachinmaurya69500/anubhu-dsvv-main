@@ -1,0 +1,189 @@
+{% extends "index.html" %}
+
+{% block title %}Dashboard - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
+
+{% block content %}
+<section class="content-section fullwidth">
+  <div class="section-header">
+    <h2>Your Dashboard</h2>
+    <p class="subtitle">Manage your submissions and explore opportunities</p>
+  </div>
+
+  {% if not auth_role %}
+    <div class="alert alert-warning">
+      <p>Please <a href="/auth" class="alert-link">log in</a> to access your dashboard.</p>
+    </div>
+  {% else %}
+    <div id="dashboard-summary" class="dashboard-grid">
+      <!-- Loaded dynamically -->
+    </div>
+
+    <div class="dashboard-section">
+      <h3>📋 Available Forms</h3>
+      <div id="forms-list" class="cards-grid">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <h3>📤 Your Submissions</h3>
+      <div id="submissions-list" class="cards-grid">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+<style>
+  .content-section.fullwidth {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 2rem 0;
+    background: var(--bg);
+  }
+
+  .content-section.fullwidth .section-header,
+  .content-section.fullwidth .dashboard-grid,
+  .content-section.fullwidth .dashboard-section,
+  .content-section.fullwidth .cards-grid,
+  .content-section.fullwidth .submissions-table {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  .dashboard-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+
+  @media (max-width: 900px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  (async function() {
+    try {
+      const authRes = await fetch('/api/auth/me', { credentials: 'include' });
+      const auth = await authRes.json();
+      
+      if (!auth.role) {
+        window.location.href = '/auth';
+        return;
+      }
+
+      // Load dashboard summary
+      const summaryContainer = document.getElementById('dashboard-summary');
+      if (auth.user) {
+        summaryContainer.innerHTML = `
+          <div class="card" style="background: var(--gradient-primary); border: 1px solid var(--line);">
+            <h3 style="margin-top: 0; color: var(--brand); font-size: 1.5rem;">Welcome, ${escapeHtml(auth.user.name || auth.user.email.split('@')[0])}! 👋</h3>
+            <p style="margin: 10px 0 0; font-size: 1rem; color: var(--ink);">You are logged in as a student. Submit your experiences, review archives, and track your submissions.</p>
+          </div>
+        `;
+      }
+
+      // Load forms
+      const formsRes = await fetch('/api/forms');
+      let forms = await formsRes.json();
+      
+      // Add dummy forms if needed
+      if (!forms || forms.length === 0) {
+        forms = [
+          { id: 'form1', title: 'Internship Experience Report 2025', category: 'Summer Internship', description: 'Share your summer 2025 internship experience.' },
+          { id: 'form2', title: 'Corporate Internship Program', category: 'Corporate', description: 'Document your corporate sector experience.' },
+          { id: 'form3', title: 'NGO & Social Sector', category: 'Social Sector', description: 'Share your social impact journey.' }
+        ];
+      }
+      
+      const formsList = document.getElementById('forms-list');
+      if (forms && forms.length > 0) {
+        formsList.innerHTML = forms.map(form => `
+          <div class="card">
+            <h4 style="margin-top: 0; color: var(--brand);">${escapeHtml(form.title)}</h4>
+            <p style="color: var(--gold); font-size: 0.9rem; font-weight: 600; margin: 8px 0;">${escapeHtml(form.category)}</p>
+            <p>${escapeHtml(form.description)}</p>
+            <a href="/forms" class="button secondary button-sm" style="display: inline-block; margin-top: 10px;">View Form</a>
+          </div>
+        `).join('');
+      } else {
+        formsList.innerHTML = '<p style="color: var(--muted); text-align: center;">No active forms at the moment.</p>';
+      }
+
+      // Load user's submissions
+      const subsRes = await fetch('/api/submissions?submittedBy=' + (auth.user?.email || 'demo@dsvv.edu'));
+      let submissions = await subsRes.json();
+      
+      // Add dummy submissions if needed
+      if (!submissions || submissions.length === 0) {
+        submissions = [
+          { id: 'sub1', studentName: auth.user?.name || 'Your Name', organization: 'Tech Corp India', summary: 'My internship experience at Tech Corp was transformative. I worked on real-world projects and gained practical knowledge that complemented my studies.', status: 'approved', submittedAt: '2025-05-15' },
+          { id: 'sub2', studentName: auth.user?.name || 'Your Name', organization: 'Marketing Solutions Ltd', summary: 'I developed digital campaign strategies and learned about consumer behavior and market dynamics. This experience solidified my career goals.', status: 'pending', submittedAt: '2025-06-20' }
+        ];
+      }
+      
+      const subsList = document.getElementById('submissions-list');
+      if (submissions && submissions.length > 0) {
+        subsList.innerHTML = submissions.map(sub => {
+          const statusColor = sub.status === 'approved' ? '#28a745' : 
+                            sub.status === 'rejected' ? '#dc3545' : '#ffc107';
+          const statusBg = sub.status === 'approved' ? 'rgba(40, 167, 69, 0.1)' : 
+                          sub.status === 'rejected' ? 'rgba(220, 53, 69, 0.1)' : 'rgba(255, 193, 7, 0.1)';
+          return `
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                <div style="flex: 1;">
+                  <h4 style="margin: 0 0 8px; color: var(--brand);">${escapeHtml(sub.studentName)}</h4>
+                  <p style="color: var(--muted); font-size: 0.9rem; margin: 0 0 8px;">Organization: <strong>${escapeHtml(sub.organization)}</strong></p>
+                  <p style="margin: 0; line-height: 1.6; color: var(--ink);">${escapeHtml(sub.summary.substring(0, 120))}...</p>
+                  <p style="color: var(--muted); font-size: 0.85rem; margin: 12px 0 0;">Submitted: ${new Date(sub.submittedAt).toLocaleDateString()}</p>
+                </div>
+                <span style="display: inline-block; padding: 6px 12px; background: ${statusBg}; color: ${statusColor}; font-weight: 700; border-radius: 6px; font-size: 0.8rem; white-space: nowrap;">
+                  ${sub.status.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        subsList.innerHTML = '<p style="color: var(--muted); text-align: center;">You have not submitted any forms yet. <a href="/forms" style="color: var(--brand); text-decoration: underline;">Submit now</a> to share your experience.</p>';
+      }
+    } catch (err) {
+      console.error('Error loading dashboard:', err);
+      document.querySelector('.section-header').insertAdjacentHTML('afterend', '<p style="color: var(--muted);">Error loading dashboard. Please refresh the page.</p>');
+    }
+  })();
+</script>
+
+<style>
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .dashboard-section {
+    margin-bottom: 3rem;
+    animation: fadeUp 400ms ease;
+  }
+
+  .dashboard-section h3 {
+    margin: 0 0 20px;
+    color: var(--brand);
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+{% endblock %}

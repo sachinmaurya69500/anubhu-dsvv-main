@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Anubhuti: the Dev Sanskriti Vishwavidyalaya internship experience portal"
+    />
+    <title>{% block title %}Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js?v=4"></script>
+  </head>
+  <body>
+    <div class="language-strip" aria-label="Language switch">
+      <div class="language-switch">
+        <button id="lang-en" type="button" class="lang-option" onclick="setAppLanguage('en')">English</button>
+        <span class="lang-separator">|</span>
+        <button id="lang-hi" type="button" class="lang-option" onclick="setAppLanguage('hi')">हिंदी</button>
+      </div>
+    </div>
+
+    <header class="site-header">
+      <div class="brand-block">
+        <a href="/" aria-label="Home" class="brand-home-link">
+          <img class="brand-logo" src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Dev Sanskriti Vishwavidyalaya logo" />
+          <span class="sr-only">Anubhuti Home</span>
+        </a>
+        <div class="brand-text-stack">
+          <h1 class="brand-main">अनुभूति</h1>
+          <p class="brand-subtitle" data-i18n="brandSubtitle">Dev Sanskriti Vishwavidyalaya</p>
+        </div>
+      </div>
+      <button id="mobile-nav-toggle" class="mobile-nav-toggle" aria-label="Toggle navigation" data-i18n-attr="aria-label:toggleNavigation">☰</button>
+
+      <nav class="site-nav" aria-label="Primary">
+        <a href="/" data-i18n="navHome">Home</a>
+        <a href="/forms" data-i18n="navForms">Forms</a>
+        <a href="/archive" data-i18n="navArchive">Archive</a>
+        <a href="/gallery" data-i18n="navGallery">Gallery</a>
+        {% if auth_role %}
+          <a href="/dashboard" data-i18n="navDashboard">Dashboard</a>
+          <form method="POST" action="/logout" style="display:inline;">
+            <button type="submit" class="button-link" data-i18n="navLogout">Logout</button>
+          </form>
+          {% if auth_role == 'admin' %}
+            <a href="/admin" data-i18n="navAdmin">Admin</a>
+          {% endif %}
+        {% else %}
+          <a href="/auth" data-i18n="navLogin">Login</a>
+        {% endif %}
+      </nav>
+    </header>
+
+    <main class="shell">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-content">
+        <div class="footer-section">
+          <h3 data-i18n="footerAboutTitle">About Anubhuti</h3>
+          <p data-i18n="footerAboutText">Anubhuti is an internship experience portal designed to help students document and share their professional journeys. Connect, learn, and grow with our academic community.</p>
+        </div>
+
+        <div class="footer-section">
+          <h3 data-i18n="footerQuickLinks">Quick Links</h3>
+          <ul>
+            <li><a href="/" data-i18n="navHome">Home</a></li>
+            <li><a href="/forms" data-i18n="footerSubmitExperience">Submit Experience</a></li>
+            <li><a href="/archive" data-i18n="navArchive">Archive</a></li>
+            <li><a href="/gallery" data-i18n="footerPhotoGallery">Photo Gallery</a></li>
+            <li><a href="/dashboard" data-i18n="footerStudentDashboard">Student Dashboard</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3 data-i18n="footerResources">Resources</h3>
+          <ul>
+            <li><a href="/forms" data-i18n="footerInternshipForms">Internship Forms</a></li>
+            <li><a href="/archive" data-i18n="footerPastExperiences">Past Experiences</a></li>
+            <li><a href="/gallery" data-i18n="footerPhotoGallery">Photo Gallery</a></li>
+            <li><a href="/guidelines" data-i18n="footerGuidelines">Guidelines</a></li>
+            <li><a href="/faqs" data-i18n="footerFaqs">FAQs</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3 data-i18n="footerContactTitle">Contact Us</h3>
+          <p data-i18n-html="footerContactText">Have questions or need support? Reach out to us at <a href="mailto:geetavpsgayatri@gmail.com">geetavpsgayatri@gmail.com</a></p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p data-i18n-html="footerCopyright">&copy; 2026 Anubhuti. Part of Dev Sanskriti Vishwavidyalaya</p>
+      </div>
+    </footer>
+
+    {% if auth_role == 'admin' %}
+      <div class="admin-floating" aria-hidden="false">
+        <a href="/admin" title="Admin panel">Admin Panel</a>
+      </div>
+    {% endif %}
+
+    <script>
+      (function(){
+        document.addEventListener('DOMContentLoaded', function(){
+          const btn = document.getElementById('mobile-nav-toggle');
+          if (!btn) return;
+          btn.addEventListener('click', function(){
+            document.body.classList.toggle('mobile-nav-open');
+          });
+        });
+      })();
+    </script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

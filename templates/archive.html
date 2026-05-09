@@ -1,0 +1,401 @@
+{% extends "index.html" %}
+
+{% block title %}Archive - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
+
+{% block content %}
+<section class="content-section fullwidth">
+  <div class="section-header">
+    <h2 data-i18n="archiveTitle">Archive Volumes</h2>
+    <p class="subtitle" data-i18n="archiveSubtitle">Explore published collections of internship experiences</p>
+  </div>
+
+  <div id="volumes-container" class="archive-volumes">
+    <!-- Loaded dynamically from API -->
+  </div>
+  
+  <div style="margin-top: 40px; text-align: center;">
+    <button class="button secondary" id="view-more-btn" data-i18n="archiveViewMore" onclick="loadMoreVolumes()" style="display: none;">
+      View More Archives
+    </button>
+  </div>
+</section>
+
+<style>
+  .content-section.fullwidth {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 2rem 0;
+    background: var(--bg);
+  }
+
+  .content-section.fullwidth .section-header,
+  .content-section.fullwidth .archive-volumes,
+  .content-section.fullwidth .archive-card,
+  .content-section.fullwidth .archive-modal-content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  .archive-volumes { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; }
+
+  @media (max-width: 900px) {
+    .archive-volumes { grid-template-columns: 1fr; }
+    .archive-modal-content { max-width: 95%; padding: 20px; }
+  }
+</style>
+
+<script>
+  let allVolumes = [];
+  let displayedCount = 0;
+  const itemsPerPage = 3;
+  let isAuthenticated = false;
+  let currentVolumeSubmissions = [];
+
+  (async function() {
+    try {
+      const bootstrapRes = await fetch('/api/bootstrap', { credentials: 'include' });
+      const bootstrap = await bootstrapRes.json();
+      isAuthenticated = Boolean(bootstrap.role);
+
+      const res = await fetch('/api/archives', { credentials: 'include' });
+      allVolumes = await res.json();
+      if (!Array.isArray(allVolumes)) allVolumes = [];
+      displayArchives();
+      // Auto-open a specific volume if provided via URL query `?vol=vol-YYYY`
+      const params = new URLSearchParams(window.location.search);
+      const volParam = params.get('vol');
+      if (volParam) {
+        // Small delay to ensure DOM is updated
+        setTimeout(() => viewVolume(volParam), 80);
+      }
+    } catch (err) {
+      console.error('Error loading archive volumes:', err);
+    }
+  })();
+
+  function displayArchives() {
+    const container = document.getElementById('volumes-container');
+    const viewMoreBtn = document.getElementById('view-more-btn');
+    
+    const volumesToDisplay = allVolumes.slice(0, displayedCount + itemsPerPage);
+    
+    let html = '';
+    volumesToDisplay.forEach((vol, index) => {
+      html += `
+        <div class="archive-card" style="animation-delay: ${index * 100}ms;">
+          <div class="archive-card-header">
+            <h3 style="margin: 0; color: var(--brand); font-size: 1.3rem;">${escapeHtml(vol.volumeLabel)} <span style="font-size: 0.85rem; color: var(--gold);">(${vol.year})</span></h3>
+            <p style="margin: 8px 0 0; font-size: 0.9rem; color: var(--muted);">Published: ${new Date(vol.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+          
+          <div class="archive-card-body">
+            <p style="margin: 15px 0; line-height: 1.6; color: var(--ink);">${escapeHtml(vol.description)}</p>
+            
+            <div class="archive-stats">
+              <div class="stat-badge">
+                <span class="stat-number">${vol.items}</span>
+                <span class="stat-label">Experiences</span>
+              </div>
+              <div class="stat-badge">
+                <span class="stat-number">${Math.floor(vol.items * 1.5)}</span>
+                <span class="stat-label">Readers</span>
+              </div>
+              <div class="stat-badge">
+                <span class="stat-number">${Math.floor(vol.items / 3)}+</span>
+                <span class="stat-label">Sectors</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="archive-card-footer">
+            <button class="button primary" onclick="viewVolume('${vol.id}')">
+              View Volume →
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    
+    container.innerHTML = html;
+    
+    // Show "View More" button if there are more volumes
+    if (volumesToDisplay.length < allVolumes.length) {
+      viewMoreBtn.style.display = 'inline-block';
+    } else {
+      viewMoreBtn.style.display = 'none';
+    }
+    
+    displayedCount = volumesToDisplay.length;
+  }
+
+  function loadMoreVolumes() {
+    displayArchives();
+  }
+
+  function escapeJs(str) {
+    return String(str).replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n');
+  }
+
+  function expandFullStory(index) {
+    const submission = currentVolumeSubmissions[index];
+    if (!submission) return;
+    
+    const photoUrl = submission.avatarUrl || submission.photo || submission.thumbnail || '';
+    const fullSummary = submission.summary || '';
+    const studentName = submission.studentName || '';
+    const organization = submission.organization || '';
+    const duration = submission.duration || '';
+    
+    const storyHtml = `
+      <div class="archive-modal" onclick="if(event.target === this) closeFullStory()">
+        <div class="archive-modal-content">
+          <button class="modal-close-btn" onclick="closeFullStory()">&times;</button>
+          ${photoUrl ? `
+            <div style="text-align: center; margin-bottom: 20px;">
+              <img src="${escapeHtml(photoUrl)}" 
+                   alt="${escapeHtml(studentName || 'Student')} photo" 
+                   style="max-width: 200px; max-height: 200px; object-fit: cover; border-radius: 12px; border: 3px solid var(--line); box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            </div>
+          ` : ''}
+          <h2 style="color: var(--brand); margin-top: 0;">${escapeHtml(studentName)}</h2>
+          <p style="color: var(--muted); margin-bottom: 16px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 4px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#4285F4"/></svg>${escapeHtml(organization || '')}${duration ? ' — ' + escapeHtml(duration) : ''}</p>
+          <div style="color: var(--ink); line-height: 1.8; white-space: pre-wrap; font-size: 0.95rem;">
+            ${escapeHtml(fullSummary)}
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', storyHtml);
+  }
+
+  function closeFullStory() {
+    const modal = document.querySelector('.archive-modal');
+    if (modal) modal.remove();
+  }
+
+  function viewVolume(volumeId) {
+    const vol = allVolumes.find(v => v.id === volumeId);
+    if (!vol) return;
+    
+    // Create modal to show volume details
+    const submissions = Array.isArray(vol.submissions) ? vol.submissions : [];
+    if (submissions.length === 0) {
+      alert('No entries in this volume yet.');
+      return;
+    }
+
+    currentVolumeSubmissions = submissions;
+
+    const modalHtml = `
+      <div class="archive-modal" onclick="if(event.target === this) closeArchiveModal()">
+        <div class="archive-modal-content">
+          <button class="modal-close-btn" onclick="closeArchiveModal()">&times;</button>
+          <h2 style="color: var(--brand); margin-top: 0;">${escapeHtml(vol.volumeLabel)} — ${escapeHtml(String(vol.year))}</h2>
+          <p style="color: var(--muted); margin-bottom: 20px;">${vol.items} approved experiences</p>
+
+          <div style="display: grid; gap: 12px;">
+            ${submissions.map((sub, idx) => `
+              <div style="padding: 16px; background: var(--bg); border-left: 3px solid var(--gold); border-radius: 6px;">
+                ${sub.avatarUrl || sub.photo || sub.thumbnail ? `
+                  <div style="margin-bottom: 12px;">
+                    <img src="${escapeHtml(sub.avatarUrl || sub.photo || sub.thumbnail)}" 
+                         alt="${escapeHtml(sub.studentName || 'Student')} photo" 
+                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--line);">
+                  </div>
+                ` : ''}
+                <p style="margin: 0 0 6px; font-weight: 700; color: var(--brand);">${idx + 1}. ${escapeHtml(sub.studentName || '')}</p>
+                <p style="margin: 0 0 6px; color: var(--ink);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 4px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#4285F4"/></svg>${escapeHtml(sub.organization || '')} — ${escapeHtml(sub.duration || '')}</p>
+                <p style="margin: 0 0 8px; color: var(--muted);">${escapeHtml(sub.summaryPreview || '')}</p>
+                <div style="margin-top:8px;">
+                  ${sub.summary ? (isAuthenticated ? `<button class="button primary" onclick="expandFullStory(${idx})">Read full story</button>` : `<button class="button primary" onclick="window.location.href='/auth?next=/archive'">Read full story</button>`) : `<span style="color: var(--muted);">No full story available</span>`}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  }
+
+  function closeArchiveModal() {
+    const modal = document.querySelector('.archive-modal');
+    if (modal) modal.remove();
+  }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeArchiveModal();
+  });
+</script>
+
+<style>
+  .archive-volumes {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .archive-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 300ms ease;
+    animation: fadeInUp 400ms ease;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .archive-card:hover {
+    box-shadow: 0 8px 24px rgba(30, 79, 138, 0.12);
+    border-color: var(--brand);
+  }
+
+  .archive-card-header {
+    padding: 25px;
+    background: linear-gradient(135deg, var(--brand-soft) 0%, rgba(199, 154, 16, 0.05) 100%);
+    border-bottom: 2px solid var(--line);
+  }
+
+  .archive-card-body {
+    padding: 25px;
+  }
+
+  .archive-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+    padding: 20px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stat-badge {
+    text-align: center;
+    padding: 10px;
+  }
+
+  .stat-number {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--brand);
+    line-height: 1;
+  }
+
+  .stat-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .archive-card-footer {
+    padding: 20px 25px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .archive-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+
+  .archive-modal-content {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 35px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+
+  .modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    font-size: 28px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 200ms ease;
+  }
+
+  .modal-close-btn:hover {
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+
+  @media (max-width: 768px) {
+    .archive-card-header {
+      padding: 20px;
+    }
+
+    .archive-card-body {
+      padding: 20px;
+    }
+
+    .archive-card-footer {
+      padding: 15px 20px;
+    }
+
+    .archive-stats {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 15px 0;
+      padding: 15px 0;
+    }
+
+    .stat-number {
+      font-size: 1.4rem;
+    }
+
+    .archive-modal-content {
+      padding: 25px;
+    }
+  }
+</style>
+{% endblock %}

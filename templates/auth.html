@@ -1,0 +1,287 @@
+{% extends "index.html" %}
+
+{% block title %}Login - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
+
+{% block content %}
+<section class="auth-page">
+  <div class="login-card">
+    <div class="login-left">
+      <div class="login-image-wrap">
+        <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Campus" />
+      </div>
+      <h2 class="left-title" data-i18n="authUniversity">DEV SANSKRITI VISHWAVIDYALAYA</h2>
+      <p class="left-note" data-i18n="authStudentPortal">Student Portal</p>
+      <p class="left-desc" data-i18n="authLeftDescription">New students? Register first with your email and create a password. Existing students can log in directly.</p>
+      <p class="left-help"><a href="#" data-i18n="authRegisterPrompt" onclick="showRegister(event)" style="color:var(--brand); text-decoration:underline;">New to Anubhuti? Register here</a></p>
+    </div>
+
+    <div class="login-right">
+      <div class="login-right-top">
+        <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="DSVV logo" class="dsVV-logo" />
+        <h1 class="portal-title" data-i18n="authStudentsPortal">STUDENTS PORTAL</h1>
+        <p class="portal-sub" data-i18n="authSupportServices">student support services</p>
+      </div>
+
+      <div class="login-panel" id="login-panel">
+        <h3 class="panel-heading" data-i18n="authLoginTitle">Student Login</h3>
+        <form id="login-form" onsubmit="handleLogin(event)" class="auth-form">
+          <div class="form-group">
+            <label for="email-login">Email</label>
+            <input type="email" id="email-login" name="email" placeholder="Enter your email" required />
+          </div>
+          <div class="form-group">
+            <label for="password-login">Password</label>
+            <input type="password" id="password-login" name="password" placeholder="Enter your password" required />
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; margin-top:16px;">
+            <button type="submit" class="button primary" data-i18n="navLogin">Login</button>
+          </div>
+        </form>
+
+        <div class="login-instructions">
+          <p data-i18n-html="authNoAccount">Don't have an account? <a href="#" onclick="showRegister(event)" style="color:var(--brand); text-decoration:underline; font-weight:600;">Register here</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Registration Modal -->
+<div id="register-modal" class="auth-modal" style="display:none;">
+  <div class="auth-modal-content">
+    <button class="modal-close-btn" onclick="hideRegister(event)">&times;</button>
+    <h2 style="margin-top:0; color:var(--brand);" data-i18n="authCreateAccount">Create Account</h2>
+    <p style="color:var(--muted);" data-i18n="authRegisterDetails">Register with your details to get started</p>
+    
+    <form id="register-form" onsubmit="handleRegister(event)" class="auth-form">
+      <div class="form-group">
+        <label for="register-name">Full Name</label>
+        <input type="text" id="register-name" name="name" placeholder="Enter your full name" required />
+      </div>
+      <div class="form-group">
+        <label for="register-email">Email</label>
+        <input type="email" id="register-email" name="email" placeholder="Enter your email" required />
+      </div>
+      <div class="form-group">
+        <label for="register-password">Password</label>
+        <input type="password" id="register-password" name="password" placeholder="Create a strong password" required />
+      </div>
+      <div class="form-group">
+        <label for="register-confirm">Confirm Password</label>
+        <input type="password" id="register-confirm" name="confirm" placeholder="Confirm your password" required />
+      </div>
+      <button type="submit" class="button primary" style="width:100%; margin-top:16px;" data-i18n="authRegister">Register</button>
+    </form>
+    
+    <p style="text-align:center; margin-top:16px; color:var(--muted);" data-i18n-html="authHaveAccount">Already have an account? <a href="#" onclick="hideRegister(event)" style="color:var(--brand); text-decoration:underline; font-weight:600;">Login here</a></p>
+  </div>
+</div>
+
+<script>
+  const nextPath = {{ next_path|default('', true)|tojson }};
+
+  function showRegister(event) {
+    event.preventDefault();
+    document.getElementById('login-panel').style.display = 'none';
+    document.getElementById('register-modal').style.display = 'flex';
+  }
+
+  function hideRegister(event) {
+    if (event) event.preventDefault();
+    document.getElementById('login-panel').style.display = 'block';
+    document.getElementById('register-modal').style.display = 'none';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('register-modal').style.display === 'flex') {
+      hideRegister();
+    }
+  });
+
+  document.getElementById('register-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('register-modal')) {
+      hideRegister();
+    }
+  });
+
+  function getSafeNextPath() {
+    if (!nextPath || typeof nextPath !== 'string') return '';
+    if (!nextPath.startsWith('/') || nextPath.startsWith('//')) return '';
+    return nextPath;
+  }
+
+  function handleLogin(event) {
+    event.preventDefault();
+    const form = document.getElementById('login-form');
+    const email = form.email.value;
+    const password = form.password.value;
+    
+    fetch('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('Login failed');
+      return r.json();
+    })
+    .then(data => {
+      const returnPath = getSafeNextPath();
+      if (returnPath) {
+        window.location.href = returnPath;
+        return;
+      }
+
+      if (data.role === 'admin') {
+        window.location.href = '/admin';
+      } else if (data.role === 'student') {
+        window.location.href = '/dashboard';
+      } else {
+        alert('Login successful, but role not determined.');
+        window.location.href = '/';
+      }
+    })
+    .catch(err => {
+      console.error('Login error:', err);
+      alert('Invalid email or password. Please try again.');
+    });
+  }
+
+  function handleRegister(event) {
+    event.preventDefault();
+    const form = document.getElementById('register-form');
+    const name = form.name.value;
+    const email = form.email.value;
+    const password = form.password.value;
+    const confirm = form.confirm.value;
+    
+    if (password !== confirm) {
+      alert('Passwords do not match.');
+      return;
+    }
+    
+    fetch('/api/students/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('Registration failed');
+      return r.json();
+    })
+    .then(data => {
+      alert('Registration successful! Please log in with your credentials.');
+      document.getElementById('register-form').reset();
+      hideRegister();
+      document.getElementById('login-form').email.focus();
+    })
+    .catch(err => {
+      console.error('Registration error:', err);
+      alert('Registration failed. Email may already be registered.');
+    });
+  }
+</script>
+
+<style>
+  .auth-page { min-height: calc(100vh - 220px); display:flex; align-items:center; justify-content:center; padding:40px 20px; background-image: url('https://source.unsplash.com/1600x900/?university,campus,india'), url('/assets/login-bg.svg'), linear-gradient(180deg,#e6eef3,#f3f6f8); background-size: cover; background-position: center; }
+  .login-card { width: 100%; max-width: 1100px; background: linear-gradient(180deg, rgba(255,255,255,0.95), #f7fafc); border-radius:12px; display:grid; grid-template-columns: 1fr 1fr; overflow:hidden; box-shadow: 0 30px 80px rgba(16,24,40,0.12); }
+  .login-left { padding: 48px; background: linear-gradient(180deg,#f1f5f9,#ffffff); display:flex; flex-direction:column; gap:18px; align-items:flex-start; }
+  .login-image-wrap { width:240px; height:160px; border-radius:12px; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.12); background:#fff; display:flex; align-items:center; justify-content:center; }
+  .login-image-wrap img { width:100%; height:100%; object-fit:cover; }
+  .left-title { margin: 6px 0 0; font-size:20px; letter-spacing:0.06em; color: #0f172a; font-weight:700; }
+  .left-note { color: var(--brand); font-weight:700; }
+  .left-desc { color: var(--muted); line-height:1.6; }
+  .left-help a { font-weight:600; }
+
+  .login-right { padding: 36px 48px; display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+  .login-right-top { display:flex; align-items:center; gap:14px; width:100%; }
+  .dsVV-logo { width:78px; height:auto; }
+  .portal-title { margin: 0; font-size:28px; letter-spacing:0.04em; color:#0b1220; }
+  .portal-sub { margin:0; color:var(--gold); font-weight:600; font-size:0.9rem; }
+
+  .login-panel { width:100%; margin-top:12px; }
+  .panel-heading { margin: 6px 0 12px; color: var(--muted); font-weight:700; }
+  .auth-form .form-group { margin-bottom: 14px; }
+  .auth-form label { display: block; margin-bottom: 6px; color: var(--ink); font-weight: 600; font-size: 0.9rem; }
+  .auth-form input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); font-size: 0.95rem; }
+
+  .login-instructions { margin-top:18px; color:var(--muted); font-size:0.95rem; }
+
+  @media (max-width: 900px) {
+    .login-card { grid-template-columns: 1fr; }
+    .login-left { order: 2; }
+    .login-right { order: 1; }
+    .login-image-wrap { width:180px; height:120px; }
+  }
+</style>
+
+<style>
+  .auth-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .auth-modal-content {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    max-width: 500px;
+    width: 100%;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 300ms ease;
+  }
+
+  .auth-modal-content .auth-form { width: 100%; }
+  .auth-modal-content label { display: block; margin-bottom: 6px; color: var(--ink); font-weight: 600; font-size: 0.9rem; }
+  .auth-modal-content input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); font-size: 0.95rem; box-sizing: border-box; }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    font-size: 28px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 200ms ease;
+  }
+
+  .modal-close-btn:hover {
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+</style>
+{% endblock %}
