@@ -66,7 +66,7 @@ Regular social services are given by the unit of National Social Service of univ
       
       <!-- Right: Archives (replacing "What's New") -->
       <div class="featured-exp-right">
-        <h3 class="featured-exp-right-title" data-i18n="homeArchivesTitle">Archives</h3>
+        <h3 class="featured-exp-right-title">UPCOMING EVENTS <img class="heading-gif" src="/upcoming.gif" alt="coming soon" onerror="this.style.display='none'" /></h3>
         <div class="featured-archives-box" id="featured-archives-box">
           <div class="loading-state">
             <p>Loading archives...</p>
@@ -391,18 +391,25 @@ Regular social services are given by the unit of National Social Service of univ
     const container = document.getElementById('featured-archives-box');
     if (!container) return;
 
-    if (!volumes.length) {
-      container.innerHTML = `<div class="archive-items-wrapper"><p style="margin: 0; color: rgba(255,255,255,0.7);">No archives yet.</p></div>`;
-      return;
-    }
+    const referenceEvents = [
+      { day: '15', month: 'May', year: '2026', title: 'Poetry Writing Competition' },
+      { day: '16', month: 'May', year: '2026', title: 'Article Writing Competition' },
+      { day: '18', month: 'May', year: '2026', title: 'Sanskrit language Reading activity' },
+      { day: '20', month: 'May', year: '2026', title: 'Public Speaking Mastery Session' },
+      { day: '23', month: 'May', year: '2026', title: 'Open Mic: Poetry, Storytelling & Social Themes' },
+      { day: '26', month: 'May', year: '2026', title: 'Podcast Creation Bootcamp for Beginners' },
+    ];
 
-    container.innerHTML = `<div class="archive-items-wrapper">${volumes.map((volume) => `
+    container.innerHTML = `<div class="archive-items-wrapper">${referenceEvents.map((event) => `
       <div class="archive-item">
+        <span class="archive-item-badge">
+          <span class="date-day">${event.day}</span>
+          <span class="date-month">${event.month}</span>
+          <span class="date-year">${event.year}</span>
+        </span>
         <div class="archive-item-title">
-          <a href="/archive?vol=${encodeURIComponent(volume.id)}" class="archive-link">${escapeHtml(volume.volumeLabel)}</a>
-          <span class="archive-item-badge">${escapeHtml(String(volume.year))}</span>
+          <div class="archive-link">${escapeHtml(event.title)}</div>
         </div>
-        <div class="archive-item-desc">${volume.items} Submissions · ${escapeHtml(volume.description)}</div>
       </div>
     `).join('')}</div>`;
   }
@@ -1328,74 +1335,109 @@ Regular social services are given by the unit of National Social Service of univ
     transform: scale(1.2);
   }
 
-  /* Archives Section - Clean Dark Box */
+  /* Archives / Upcoming Events block - match reference */
   .featured-exp-right-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--brand);
-    margin: 0 0 1rem;
+    font-family: 'Merriweather', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f75bb;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 4px solid #1f75bb;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .heading-gif {
+    height: 34px;
+    width: auto;
+    flex: 0 0 auto;
   }
 
   .featured-archives-box {
-    background: var(--ink);
-    color: #fff;
-    padding: 1.25rem;
-    border-radius: 0;
-    min-height: 300px;
-    overflow: hidden;
-    position: relative;
+    background: #efefef;
+    border: 1px solid #cfcfcf;
+    color: var(--ink);
+    padding: 0;
+    border-radius: 6px;
+    max-height: 556px;
+    overflow-y: auto;
   }
 
   .featured-archives-box .archive-items-wrapper {
-    animation: scrollUp 8s linear infinite;
-  }
-
-  @keyframes scrollUp {
-    0% {
-      transform: translateY(0);
-    }
-    100% {
-      transform: translateY(-100%);
-    }
-  }
-
-  .featured-archives-box:hover .archive-items-wrapper {
-    animation-play-state: paused;
+    display: flex;
+    flex-direction: column;
   }
 
   .featured-archives-box .archive-item {
-    margin-bottom: 1rem;
-    padding-bottom: 0.8rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0;
+    padding: 10px;
+    border-bottom: 1px solid #d2d2d2;
+    background: #efefef;
   }
 
   .featured-archives-box .archive-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
+    border-bottom: 0;
   }
 
   .featured-archives-box .archive-item-title {
-    font-size: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .archive-link {
+    font-family: 'Merriweather', serif;
+    font-size: 1.2rem;
     font-weight: 600;
-    margin: 0 0 0.4rem;
+    color: #337ab7;
+    text-decoration: none;
+    line-height: 1.2;
   }
 
   .featured-archives-box .archive-item-desc {
-    font-size: 1.5rem;
-    line-height: 1.4;
-    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.88rem;
+    line-height: 1.2;
+    color: #667;
     margin: 0;
   }
 
   .archive-item-badge {
-    display: inline-block;
-    background: var(--accent);
+    width: 100px;
+    height: 100px;
+    background: #ffdd00;
     color: #000;
-    padding: 2px 6px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    border-radius: 0;
-    margin-left: 0.5rem;
+    border-radius: 5px;
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  .archive-item-badge .date-day {
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+
+  .archive-item-badge .date-month {
+    font-size: 1rem;
+    line-height: 1.1;
+  }
+
+  .archive-item-badge .date-year {
+    font-size: 0.9rem;
+    line-height: 1.1;
   }
 
   @media (max-width: 1024px) {
@@ -1412,8 +1454,17 @@ Regular social services are given by the unit of National Social Service of univ
       grid-column: 1;
     }
 
-    .featured-archives-box {
-      min-height: 250px;
+    .featured-exp-right-title {
+      font-size: 1.5rem;
+    }
+
+    .archive-item-badge {
+      width: 84px;
+      height: 84px;
+    }
+
+    .archive-link {
+      font-size: 1.05rem;
     }
   }
 
