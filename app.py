@@ -4,6 +4,7 @@ from functools import wraps
 from io import BytesIO
 import jwt
 import bcrypt
+from deep_translator import GoogleTranslator
 from flask import Flask, jsonify, request, send_file, send_from_directory, render_template, redirect
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient
@@ -140,6 +141,71 @@ def get_request_data():
     if request.form:
         return request.form.to_dict(flat=True)
     return {}
+
+
+@app.route('/api/translate', methods=['POST'])
+def translate_texts():
+    """Translate text list using an online translator service.
+
+    Request JSON:
+    {
+      "texts": ["Hello", "World"],
+      "target": "hi",
+      "source": "auto"   # optional, default auto
+    }
+    """
+    try:
+        data = get_request_data()
+        texts = data.get('texts', [])
+        target = str(data.get('target', 'hi')).strip().lower()
+        source = str(data.get('source', 'auto')).strip().lower() or 'auto'
+
+        if not isinstance(texts, list) or len(texts) == 0:
+            return jsonify({'message': 'texts must be a non-empty array.'}), 400
+
+        if len(texts) > 200:
+            return jsonify({'message': 'Maximum 200 text items per request.'}), 400
+
+        allowed_langs = {'en', 'hi', 'auto'}
+        if target not in {'en', 'hi'}:
+            return jsonify({'message': 'target must be en or hi.'}), 400
+        if source not in allowed_langs:
+            source = 'auto'
+
+        normalized = []
+        for item in texts:
+            text = str(item or '').strip()
+            if len(text) > 2000:
+                return jsonify({'message': 'Each text item must be <= 2000 characters.'}), 400
+            normalized.append(text)
+
+        translator = GoogleTranslator(source=source, target=target)
+
+        try:
+            translated = translator.translate_batch(normalized)
+        except Exception:
+            translated = []
+            for text in normalized:
+                if not text:
+                    translated.append('')
+                    continue
+                try:
+                    translated.append(translator.translate(text))
+                except Exception:
+                    translated.append(text)
+
+        if not isinstance(translated, list):
+            translated = [str(translated)]
+
+        if len(translated) != len(normalized):
+            padded = []
+            for i, original in enumerate(normalized):
+                padded.append(translated[i] if i < len(translated) else original)
+            translated = padded
+
+        return jsonify({'translated': translated})
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
 
 # Database setup
 try:
@@ -423,20 +489,6 @@ def serve_admin_logs():
     if not user:
         return redirect('/auth')
     return render_template('admin-logs.html', auth_role='admin')
-
-@app.route('/<path:path>')
-def serve_static(path):
-    """Serve static files."""
-    if path.startswith('api/'):
-        return jsonify({'message': 'Not found'}), 404
-    # If a corresponding template exists in the templates folder, render it
-    template_path = os.path.join(app.template_folder or 'templates', path)
-    if path.endswith('.html') and os.path.exists(template_path):
-        # render the template (path is the filename under templates)
-        return render_template(path)
-
-    # Otherwise, serve as a static file from project root (styles, assets, js)
-    return send_from_directory('.', path)
 
 @app.route('/admin')
 def serve_admin():
@@ -1590,6 +1642,22 @@ def download_pdf(submission_id):
         return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name=filename)
     except Exception as e:
         return jsonify({'message': str(e)}), 500
+
+
+@app.route('/<path:path>', methods=['GET'])
+def serve_static(path):
+    """Serve template/static files for non-API GET requests only.
+
+    Keep this catch-all route at the end so explicit API routes are matched first.
+    """
+    if path.startswith('api/'):
+        return jsonify({'message': 'Not found'}), 404
+
+    template_path = os.path.join(app.template_folder or 'templates', path)
+    if path.endswith('.html') and os.path.exists(template_path):
+        return render_template(path)
+
+    return send_from_directory('.', path)
 
 if __name__ == '__main__':
     seed_database()

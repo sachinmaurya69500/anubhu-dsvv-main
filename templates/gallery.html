@@ -3,102 +3,254 @@
 {% block title %}Photo Gallery - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
 
 {% block content %}
-<section class="content-section">
-  <div class="section-header">
-    <h2 data-i18n="galleryTitle">Internship Photo Gallery</h2>
-    <p class="subtitle" data-i18n="gallerySubtitle">Explore photos from internship experiences across our community</p>
+<section class="content-section fullwidth gallery-page">
+  <div class="page-intro">
+    <div class="page-eyebrow">DSVV Gallery</div>
+    <div class="section-header">
+      <h2 data-i18n="galleryTitle">Internship Photo Gallery</h2>
+      <p class="subtitle" data-i18n="gallerySubtitle">Explore photos from internship experiences across our community</p>
+    </div>
+    <div class="page-badges" aria-label="Gallery highlights">
+      <span class="page-badge">Profile snapshots</span>
+      <span class="page-badge">Experience highlights</span>
+      <span class="page-badge">Lightbox browsing</span>
+    </div>
   </div>
 
-  <div style="margin-bottom: 30px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-    <button class="gallery-filter-btn active" data-i18n="galleryAllPhotos" onclick="filterGallery('all')" style="padding: 8px 16px; border: 2px solid var(--line); background: var(--brand); color: white; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">All Photos</button>
-    <button class="gallery-filter-btn" data-i18n="galleryProfilePhotos" onclick="filterGallery('profiles')" style="padding: 8px 16px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">Profile Photos</button>
-    <button class="gallery-filter-btn" data-i18n="galleryExperiencePhotos" onclick="filterGallery('experiences')" style="padding: 8px 16px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">Experience Photos</button>
+  <div class="gallery-layout">
+    <div class="toolbar-shell gallery-toolbar" role="tablist" aria-label="Gallery filters">
+      <button class="gallery-filter-btn filter-chip active" data-filter="all" data-i18n="galleryAllPhotos" onclick="filterGallery('all')">All Photos</button>
+      <button class="gallery-filter-btn filter-chip" data-filter="profiles" data-i18n="galleryProfilePhotos" onclick="filterGallery('profiles')">Profile Photos</button>
+      <button class="gallery-filter-btn filter-chip" data-filter="experiences" data-i18n="galleryExperiencePhotos" onclick="filterGallery('experiences')">Experience Photos</button>
+    </div>
+
+    <div id="gallery-grid" class="gallery-grid gallery-grid--wide">
+      <!-- Loaded dynamically from API -->
+    </div>
   </div>
 
-  <div id="gallery-grid" class="gallery-grid" style="
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 40px;
-  ">
-    <!-- Loaded dynamically from API -->
-  </div>
+  <div id="gallery-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-label="Gallery lightbox">
+    <div class="modal-content gallery-modal-content" style="max-width: 90%; max-height: 90vh; display: flex; flex-direction: column; padding: 0; position: relative;" tabindex="-1">
 
-  <div id="gallery-modal" class="modal" style="display: none;">
-    <div class="modal-content gallery-modal-content" style="
-      max-width: 90%;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
-      background: rgba(0, 0, 0, 0.95);
-      border: none;
-      border-radius: 0;
-      padding: 0;
-    ">
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-        <h3 id="modal-title" style="margin: 0; color: white; font-size: 1.2rem;"></h3>
-        <button class="modal-close" onclick="closeGalleryModal()" style="background: none; border: none; color: white; font-size: 32px; cursor: pointer; padding: 0;">&times;</button>
-      </div>
-      
-      <div style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-        <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-          <img id="modal-image" src="" alt="Photo" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+      <div class="gallery-modal-top" style="position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0)); z-index: 10;">
+        <div>
+          <p style="margin: 0 0 4px; color: rgba(255,255,255,0.85); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;">Photo View</p>
+          <h3 id="modal-title" style="margin: 0; color: white; font-size: 1.05rem;"></h3>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div id="modal-info" style="color: rgba(255,255,255,0.85); font-size:0.95rem; margin-right: 8px;"></div>
+          <button class="modal-close" onclick="closeGalleryModal()" style="background: rgba(0,0,0,0.35); border: none; color: white; font-size: 28px; cursor: pointer; padding: 8px 10px; border-radius: 8px;">&times;</button>
         </div>
       </div>
 
-      <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5);">
-        <p id="modal-info" style="margin: 0; color: #ccc; font-size: 0.95rem;"></p>
+      <button class="gallery-nav prev" aria-label="Previous image" onclick="prevGalleryImage()">‹</button>
+      <button class="gallery-nav next" aria-label="Next image" onclick="nextGalleryImage()">›</button>
+
+      <div class="gallery-modal-body" style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+          <img id="modal-image" src="" alt="Photo" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+          <!-- Edge navigation zones for immersive mode -->
+          <div class="edge-nav edge-left" onclick="prevGalleryImage()" aria-hidden="true"></div>
+          <div class="edge-nav edge-right" onclick="nextGalleryImage()" aria-hidden="true"></div>
+        </div>
       </div>
 
-      <div style="display: flex; justify-content: space-between; gap: 10px; padding: 10px;">
-        <button onclick="prevGalleryImage()" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.9rem;">← Previous</button>
-        <button onclick="nextGalleryImage()" style="flex: 1; padding: 10px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.9rem;">Next →</button>
+      <div class="gallery-modal-bottom" style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; padding: 12px 18px; background: linear-gradient(0deg, rgba(0,0,0,0.45), rgba(0,0,0,0)); z-index: 10;">
+        <div style="color: rgba(255,255,255,0.9); font-size: 0.95rem; text-align:center;">Use ← → keys or swipe to navigate · Double-tap to zoom</div>
       </div>
+
     </div>
   </div>
 </section>
 
 <style>
-  .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
+    /* Fullscreen lightbox overrides */
+    #gallery-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      padding: 20px;
+    }
+
+    /* When entering fullscreen, the modal should cover the viewport */
+    #gallery-modal:fullscreen,
+    #gallery-modal:-webkit-full-screen {
+      background: black;
+      padding: 0;
+    }
+
+    #gallery-modal:fullscreen .gallery-modal-content,
+    #gallery-modal:-webkit-full-screen .gallery-modal-content {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      max-height: none !important;
+      border-radius: 0 !important;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Immersive mode: hide UI chrome and use full viewport for image */
+    #gallery-modal.immersive { background: black; padding: 0; }
+    #gallery-modal.immersive .gallery-modal-top,
+    #gallery-modal.immersive .gallery-modal-bottom,
+    #gallery-modal.immersive .modal-close,
+    #gallery-modal.immersive .gallery-nav { display: none !important; }
+    #gallery-modal.immersive .gallery-modal-body { padding: 0 !important; }
+    #gallery-modal.immersive .gallery-modal-content { width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; border-radius: 0 !important; }
+    #gallery-modal.immersive img { width: 100% !important; height: 100vh !important; object-fit: contain !important; }
+
+    /* Edge nav zones (invisible but capture taps/clicks) */
+    .edge-nav { position: absolute; top: 0; bottom: 0; width: 28%; z-index: 12; }
+    .edge-left { left: 0; }
+    .edge-right { right: 0; }
+    @media (max-width: 640px) { .edge-nav { width: 36%; } }
+
+    /* Make the image fill the fullscreen area while maintaining aspect ratio */
+    #gallery-modal:fullscreen img,
+    #gallery-modal:-webkit-full-screen img {
+      max-width: 100% !important;
+      max-height: 100% !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: contain !important;
+    }
+
+    /* Toolbar and controls in fullscreen */
+    #gallery-modal:fullscreen .modal-close {
+      font-size: 38px;
+    }
+
+    /* Lightbox animations and controls */
+    .gallery-modal-content {
+      animation: lightbox-in 180ms ease-out;
+      transition: transform 180ms ease;
+      will-change: transform;
+    }
+
+    @keyframes lightbox-in {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.35);
+      color: white;
+      border: none;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      z-index: 11;
+      cursor: pointer;
+      transition: background 120ms ease, transform 120ms ease;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    }
+
+    .gallery-nav:hover { background: rgba(0,0,0,0.55); transform: translateY(-50%) scale(1.03); }
+
+    .gallery-nav.prev { left: 14px; }
+    .gallery-nav.next { right: 14px; }
+
+    .gallery-modal-top h3 { margin: 0; }
+
+    @media (max-width: 640px) {
+      .gallery-nav { width: 44px; height: 44px; font-size: 22px; }
+      .gallery-modal-top { padding: 10px; }
+      .gallery-modal-bottom { padding: 8px 12px; font-size: 0.9rem; }
+    }
+
+  .gallery-page {
+    padding: 2rem 0 2.5rem;
+    background: linear-gradient(180deg, rgba(247, 250, 252, 0.72), rgba(255, 255, 255, 0.98));
   }
 
-  .gallery-item {
-    position: relative;
-    aspect-ratio: 1;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    cursor: pointer;
-    background: var(--surface);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  .gallery-item:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .gallery-item img {
+  .gallery-page .page-intro {
+    max-width: none;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    margin: 0 0 1.5rem;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    padding-left: 2rem;
+    padding-right: 2rem;
   }
 
-  /* Removed overlay labels: names, organizations, and type badges */
+  .gallery-page .gallery-layout {
+    width: 100%;
+    padding: 0 2rem;
+  }
+
+  .gallery-page .gallery-toolbar {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .gallery-page .gallery-grid--wide {
+    width: 100%;
+    margin-bottom: 40px;
+  }
+
+  .gallery-page .gallery-filter-btn {
+    min-width: 140px;
+  }
+
+  .gallery-page .gallery-filter-btn.active {
+    background: var(--brand);
+    color: white;
+    border-color: var(--brand);
+  }
+
+  .gallery-page .gallery-modal-content {
+    max-width: none !important;
+    width: 100% !important;
+    max-height: 98vh !important;
+    border-radius: var(--radius-xl);
+    padding: 0;
+  }
 
   @media (max-width: 768px) {
-    .gallery-grid {
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 12px;
+    .gallery-page .page-intro,
+    .gallery-page .gallery-layout {
+      padding-left: 1rem;
+      padding-right: 1rem;
     }
 
-    .gallery-modal-content {
-      max-width: 95% !important;
-      max-height: 95vh !important;
+    .gallery-page .gallery-filter-btn {
+      min-width: 0;
+      flex: 1 1 calc(50% - 0.75rem);
+    }
+
+    .gallery-page .gallery-modal-content {
+      width: 100% !important;
+      max-height: 98vh !important;
+      padding: 0;
     }
   }
+
+  /* Make the displayed image use the full modal width */
+  .gallery-modal-content img {
+    width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block;
+    transition: transform 160ms ease;
+    transform-origin: center center;
+    touch-action: none;
+  }
+
+  .gallery-modal-body { padding: 0 !important; }
 </style>
 
 <script>
@@ -162,6 +314,11 @@
     container.innerHTML = filteredPhotos.map((photo, index) => `
       <div class="gallery-item" onclick="openGalleryModal(${index})">
         <img src="${escapeHtml(getPhotoSrc(photo.src))}" alt="Photo ${index + 1}" />
+        <div class="gallery-item-meta">
+          <span class="gallery-type">${photo.type === 'profile' ? 'Profile Photo' : 'Experience Photo'}</span>
+          <p class="meta-name">${escapeHtml(photo.studentName)}</p>
+          <p class="meta-subtitle">${escapeHtml(photo.organization)}</p>
+        </div>
       </div>
     `).join('');
   }
@@ -180,8 +337,7 @@
 
     // Update button styles
     document.querySelectorAll('.gallery-filter-btn').forEach(btn => {
-      btn.style.background = btn.onclick.toString().includes(`'${filter}'`) ? 'var(--brand)' : 'var(--surface)';
-      btn.style.color = btn.onclick.toString().includes(`'${filter}'`) ? 'white' : 'var(--ink)';
+      btn.classList.toggle('active', btn.dataset.filter === filter);
     });
 
     // Filter photos
@@ -208,12 +364,68 @@
     img.onerror = () => { img.src = '/assets/Dev_Sanskriti_Vishwavidyalaya.png'; };
     title.textContent = photo.studentName;
     info.textContent = `${photo.organization} • ${photo.type === 'profile' ? 'Profile Photo' : 'Experience Photo'} (${currentModalIndex + 1} of ${filteredPhotos.length})`;
-
+    // Show the modal
     modal.style.display = 'flex';
+
+    // Focus modal for keyboard navigation
+    const content = modal.querySelector('.gallery-modal-content');
+    if (content && typeof content.focus === 'function') content.focus();
+
+    // Try to enter fullscreen for an immersive lightbox experience
+    try {
+      if (modal.requestFullscreen) {
+        modal.requestFullscreen().catch(() => {});
+      } else if (modal.webkitRequestFullscreen) {
+        modal.webkitRequestFullscreen();
+      }
+    } catch (err) {
+      // ignore if fullscreen is not available or denied
+    }
+
+    // Enable immersive mode (hide chrome and let image fill viewport)
+    modal.classList.add('immersive');
+
+    // Attach overlay click handler (click outside content closes)
+    modal._overlayHandler = (e) => { if (e.target === modal) closeGalleryModal(); };
+    modal.addEventListener('click', modal._overlayHandler);
+
+    // Reset any previous transforms and enable gestures
+    const imgEl = document.getElementById('modal-image');
+    if (imgEl) imgEl.style.transform = '';
+    enableImageGestures();
+
+    // Preload neighboring images for smoother navigation
+    preloadNeighborImages(currentModalIndex);
   }
 
   function closeGalleryModal() {
-    document.getElementById('gallery-modal').style.display = 'none';
+    const modal = document.getElementById('gallery-modal');
+    // Exit fullscreen if active
+    try {
+      if (document.fullscreenElement) {
+        document.exitFullscreen && document.exitFullscreen().catch(() => {});
+      } else if (document.webkitFullscreenElement) {
+        document.webkitExitFullscreen && document.webkitExitFullscreen();
+      }
+    } catch (err) {
+      // ignore
+    }
+
+    // Remove overlay handler
+    if (modal && modal._overlayHandler) {
+      modal.removeEventListener('click', modal._overlayHandler);
+      delete modal._overlayHandler;
+    }
+
+    // Disable immersive mode
+    modal.classList.remove('immersive');
+
+    // Disable gesture handlers and reset image transform
+    disableImageGestures();
+    const imgEl = document.getElementById('modal-image');
+    if (imgEl) imgEl.style.transform = '';
+
+    modal.style.display = 'none';
   }
 
   function nextGalleryImage() {
@@ -232,5 +444,121 @@
     if (e.key === 'ArrowRight') nextGalleryImage();
     if (e.key === 'ArrowLeft') prevGalleryImage();
   });
+
+  // Preload neighbor images to improve perceived performance
+  function preloadNeighborImages(index) {
+    if (!Array.isArray(filteredPhotos) || filteredPhotos.length === 0) return;
+    const next = filteredPhotos[(index + 1) % filteredPhotos.length];
+    const prev = filteredPhotos[(index - 1 + filteredPhotos.length) % filteredPhotos.length];
+    [next, prev].forEach(p => {
+      if (!p || !p.src) return;
+      const im = new Image();
+      im.src = getPhotoSrc(p.src);
+    });
+  }
+
+  /* Pinch-zoom, pan and double-tap zoom support for modal image */
+  function enableImageGestures() {
+    const img = document.getElementById('modal-image');
+    if (!img) return;
+
+    let scale = 1, startScale = 1;
+    let startDist = 0;
+    let isPinching = false;
+    let isPanning = false;
+    let startX = 0, startY = 0, lastX = 0, lastY = 0;
+    let lastTap = 0;
+
+    function getDist(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    }
+
+    function applyTransform() {
+      img.style.transform = `translate(${lastX}px, ${lastY}px) scale(${scale})`;
+    }
+
+    function onTouchStart(e) {
+      if (e.touches.length === 2) {
+        isPinching = true;
+        startDist = getDist(e.touches);
+        startScale = scale;
+      } else if (e.touches.length === 1 && scale > 1) {
+        isPanning = true;
+        startX = e.touches[0].clientX - lastX;
+        startY = e.touches[0].clientY - lastY;
+      }
+
+      // double-tap detection
+      const now = Date.now();
+      if (e.touches.length === 1) {
+        if (now - lastTap < 300) {
+          // double tap: toggle zoom
+          if (scale === 1) {
+            scale = 2;
+          } else {
+            scale = 1;
+            lastX = 0; lastY = 0;
+          }
+          applyTransform();
+        }
+        lastTap = now;
+      }
+    }
+
+    function onTouchMove(e) {
+      if (isPinching && e.touches.length === 2) {
+        const dist = getDist(e.touches);
+        const newScale = Math.max(1, Math.min(4, startScale * (dist / startDist)));
+        scale = newScale;
+        applyTransform();
+        e.preventDefault();
+      } else if (isPanning && e.touches.length === 1) {
+        lastX = e.touches[0].clientX - startX;
+        lastY = e.touches[0].clientY - startY;
+        applyTransform();
+        e.preventDefault();
+      }
+    }
+
+    function onTouchEnd(e) {
+      if (isPinching && e.touches.length < 2) isPinching = false;
+      if (isPanning && e.touches.length === 0) isPanning = false;
+      // clamp scale to reasonable range
+      scale = Math.max(1, Math.min(4, scale));
+      if (scale === 1) { lastX = 0; lastY = 0; }
+      applyTransform();
+    }
+
+    function onWheel(e) {
+      if (!e.ctrlKey && !e.metaKey) return; // require ctrl/cmd + wheel for zoom
+      e.preventDefault();
+      const delta = -e.deltaY * 0.0015;
+      scale = Math.max(1, Math.min(4, scale + delta));
+      applyTransform();
+    }
+
+    // attach handlers and keep references for cleanup
+    img._gestureHandlers = { onTouchStart, onTouchMove, onTouchEnd, onWheel };
+    img.addEventListener('touchstart', onTouchStart, { passive: false });
+    img.addEventListener('touchmove', onTouchMove, { passive: false });
+    img.addEventListener('touchend', onTouchEnd);
+    img.addEventListener('wheel', onWheel, { passive: false });
+  }
+
+  function disableImageGestures() {
+    const img = document.getElementById('modal-image');
+    if (!img || !img._gestureHandlers) return;
+    const h = img._gestureHandlers;
+    img.removeEventListener('touchstart', h.onTouchStart);
+    img.removeEventListener('touchmove', h.onTouchMove);
+    img.removeEventListener('touchend', h.onTouchEnd);
+    img.removeEventListener('wheel', h.onWheel);
+    delete img._gestureHandlers;
+    // reset transform
+    img.style.transform = '';
+  }
+
 </script>
 {% endblock %}

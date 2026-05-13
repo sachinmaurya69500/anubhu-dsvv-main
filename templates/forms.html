@@ -3,47 +3,204 @@
 {% block title %}Forms - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
 
 {% block content %}
-<section class="content-section fullwidth">
-  <div class="section-header">
-    <h2 data-i18n="formsTitle">Submit Your Experience</h2>
-    <p class="subtitle" data-i18n="formsSubtitle">Share your internship or field work experience with our community</p>
+<section class="content-section fullwidth forms-page">
+  <div class="page-intro">
+    <div class="page-eyebrow">DSVV Experience Portal</div>
+    <div class="section-header">
+      <h2 data-i18n="formsTitle">Submit Your Experience</h2>
+      <p class="subtitle" data-i18n="formsSubtitle">Share your internship or field work experience with our community</p>
+    </div>
+    <div class="page-badges" aria-label="Submission highlights">
+      <span class="page-badge">Official student submissions</span>
+      <span class="page-badge">Guided review process</span>
+      <span class="page-badge">Photos and reflections</span>
+    </div>
   </div>
 
-  {% if not auth_role %}
-    <div class="alert alert-info">
-      <p data-i18n-html="formsLoginRequired">You must <a href="/auth" class="alert-link">log in</a> to submit a form.</p>
-    </div>
-  {% endif %}
+  <div class="page-shell centered">
+    {% if not auth_role %}
+      <div class="alert alert-info">
+        <p data-i18n-html="formsLoginRequired">You must <a href="/auth" class="alert-link">log in</a> to submit a form.</p>
+      </div>
+    {% endif %}
 
-  <div class="forms-list">
-    <div id="forms-container" class="cards-grid">
-      <!-- Loaded dynamically from API -->
+    <div class="forms-list">
+      <div id="forms-container" class="cards-grid forms-grid">
+        <!-- Loaded dynamically from API -->
+      </div>
     </div>
   </div>
 </section>
 
 <style>
-  .content-section.fullwidth {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    padding: 2rem 0;
-    background: var(--bg);
+  .forms-page {
+    padding: 2rem 0 2.5rem;
+    background: linear-gradient(180deg, rgba(247, 250, 252, 0.65), rgba(255, 255, 255, 0.98));
   }
 
-  .content-section.fullwidth .section-header,
-  .content-section.fullwidth .forms-list,
-  .content-section.fullwidth .forms-list .cards-grid,
-  .content-section.fullwidth .form-card {
-    max-width: 1100px;
+  .forms-page .forms-grid {
+    gap: 1.25rem;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .forms-page .forms-list {
+    width: 100%;
+    max-width: 1040px;
     margin: 0 auto;
-    padding: 0 1.25rem;
   }
 
-  .forms-list .cards-grid { gap: 24px; }
+  .forms-page .form-card {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .forms-page .form-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--brand), var(--accent));
+  }
+
+  .forms-page .form-card h3 {
+    margin: 0;
+    color: var(--brand);
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .forms-page .form-card .form-description {
+    margin: 0;
+    color: var(--ink);
+    line-height: 1.65;
+  }
+
+  .forms-page .form-card .form-body {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .forms-page .form-card .form-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: auto;
+    padding-top: 0.25rem;
+  }
+
+  .forms-page .form-card .form-status {
+    color: var(--brand);
+    font-weight: 700;
+  }
+
+  .forms-page .submission-modal .modal-content {
+    max-width: 720px;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 252, 0.98));
+  }
+
+  .forms-page .submission-modal h3 {
+    margin: 0;
+    color: var(--brand);
+    font-size: 1.7rem;
+  }
+
+  .forms-page .submission-modal .modal-lead {
+    margin: 0.5rem 0 1.5rem;
+    color: var(--muted);
+  }
+
+  .forms-page .form-fieldset {
+    margin: 0 0 1rem;
+    padding: 1.2rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+
+  .forms-page .form-fieldset legend {
+    padding: 0 0.5rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .forms-page .form-group {
+    margin-top: 1rem;
+  }
+
+  .forms-page .form-label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .forms-page .form-input,
+  .forms-page .form-textarea {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(0, 61, 153, 0.14);
+    border-radius: var(--radius-md);
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  .forms-page .form-input:focus,
+  .forms-page .form-textarea:focus {
+    outline: none;
+    border-color: rgba(0, 61, 153, 0.4);
+    box-shadow: 0 0 0 4px rgba(0, 61, 153, 0.08);
+  }
+
+  .forms-page .upload-zone {
+    padding: 1rem;
+    border: 1px dashed rgba(0, 61, 153, 0.24);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,250,252,0.95));
+    text-align: center;
+    cursor: pointer;
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  .forms-page .upload-zone:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 61, 153, 0.38);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .forms-page .upload-zone strong {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--ink);
+  }
+
+  .forms-page .form-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .forms-page .form-actions .button {
+    flex: 1;
+  }
 
   @media (max-width: 900px) {
-    .forms-list .cards-grid { grid-template-columns: 1fr; }
+    .forms-page .forms-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .forms-page .form-actions {
+      flex-direction: column;
+    }
   }
 </style>
 
@@ -69,32 +226,47 @@
       }
 
       if (!forms || forms.length === 0) {
-        container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--muted);">
-          <p style="font-size: 1.1rem; margin-bottom: 10px;">📋 No Active Forms</p>
-          <p>No forms are currently available for submission. Please check back later.</p>
+        container.innerHTML = `<div class="form-empty">
+          <p style="font-size: 1.1rem; margin: 0 0 0.5rem; color: var(--brand); font-weight: 700;">No Active Forms</p>
+          <p style="margin: 0;">No forms are currently available for submission. Please check back later.</p>
         </div>`;
         return;
       }
 
       container.innerHTML = forms.map(form => `
-        <div class="card form-card">
-          <h3 style="margin-top: 0; color: var(--brand);">${escapeHtml(form.title)}</h3>
-          <p class="meta" style="margin: 8px 0; color: var(--gold); font-weight: 600;">
-            ${escapeHtml(form.category)} • Deadline: ${new Date(form.deadline).toLocaleDateString()}
-          </p>
-          <p>${escapeHtml(form.description)}</p>
-          <p style="margin: 15px 0 0; font-size: 0.9rem; color: var(--muted);">
-            <strong>${form.submissionCount || 0}</strong> submissions received
-          </p>
-          ${submittedFormIds.has(String(form._id || form.id || '')) ? '<p style="margin: 10px 0 0; color: var(--brand); font-weight: 600;">Already submitted</p>' : ''}
-          <button
-            class="button primary button-sm"
-            onclick="loadFormModal('${form._id || form.id}', ${submittedFormIds.has(String(form._id || form.id || '')) ? 'true' : 'false'})"
-            style="margin-top: auto;"
-            ${!isAuth || submittedFormIds.has(String(form._id || form.id || '')) ? `disabled title="${!isAuth ? 'Login required' : 'You have already submitted this form.'}"` : ''}
-          >
-            ${submittedFormIds.has(String(form._id || form.id || '')) ? 'Submitted' : 'Submit Response'}
-          </button>
+        <div class="card form-card surface-card">
+          <div class="form-body">
+            <div class="form-meta">
+              <span class="meta-pill">${escapeHtml(form.category)}</span>
+              <span class="meta-pill meta-pill--muted">Deadline ${new Date(form.deadline).toLocaleDateString()}</span>
+            </div>
+            <h3>${escapeHtml(form.title)}</h3>
+            <p class="form-description">${escapeHtml(form.description)}</p>
+            <div class="form-stats">
+              <div class="form-stat">
+                <strong>${form.submissionCount || 0}</strong>
+                <span>Submissions</span>
+              </div>
+              <div class="form-stat">
+                <strong>${isAuth ? 'Open' : 'Login'}</strong>
+                <span>${isAuth ? 'Ready for you' : 'Required'}</span>
+              </div>
+              <div class="form-stat">
+                <strong>${submittedFormIds.has(String(form._id || form.id || '')) ? 'Done' : 'Fresh'}</strong>
+                <span>${submittedFormIds.has(String(form._id || form.id || '')) ? 'Submitted' : 'New entry'}</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-card-footer">
+            ${submittedFormIds.has(String(form._id || form.id || '')) ? '<span class="form-status">Already submitted</span>' : '<span class="form-status">Ready to submit</span>'}
+            <button
+              class="button primary button-sm"
+              onclick="loadFormModal('${form._id || form.id}', ${submittedFormIds.has(String(form._id || form.id || '')) ? 'true' : 'false'})"
+              ${!isAuth || submittedFormIds.has(String(form._id || form.id || '')) ? `disabled title="${!isAuth ? 'Login required' : 'You have already submitted this form.'}"` : ''}
+            >
+              ${submittedFormIds.has(String(form._id || form.id || '')) ? 'Submitted' : 'Submit Response'}
+            </button>
+          </div>
         </div>
       `).join('');
     } catch (err) {
@@ -107,7 +279,7 @@
     if (alreadySubmitted) return;
 
     const modal = document.createElement('div');
-    modal.className = 'modal';
+    modal.className = 'modal submission-modal';
     modal.style.display = 'flex';
 
     const modalContent = document.createElement('div');
@@ -116,75 +288,76 @@
     modalContent.innerHTML = `
       <button class="modal-close" type="button" onclick="closeModal(event)" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 28px; cursor: pointer; color: var(--ink);">&times;</button>
       
-      <h3 style="margin: 0 0 8px 0; color: var(--brand); font-size: 1.5rem;">Share Your Story</h3>
-      <p style="margin: 0 0 24px 0; color: var(--muted);">Help us inspire others by sharing your internship experience</p>
+      <div class="page-eyebrow" style="margin-bottom: 0.9rem;">Submission Form</div>
+      <h3>Share Your Story</h3>
+      <p class="modal-lead">Help us inspire others by sharing your internship experience</p>
       
       <form id="submission-form" enctype="multipart/form-data" onsubmit="handleSubmit(event, '${formId}')">
         
         <!-- Personal Information Section -->
-        <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; background: var(--surface);">
-          <legend style="font-weight: 700; color: var(--ink); padding: 0 8px;">Your Information</legend>
+        <fieldset class="form-fieldset">
+          <legend>Your Information</legend>
           
           <div class="form-group">
-            <label for="studentName" style="font-weight: 600;">Student Name *</label>
-            <input type="text" id="studentName" name="studentName" placeholder="Full name" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+            <label class="form-label" for="studentName">Student Name *</label>
+            <input class="form-input" type="text" id="studentName" name="studentName" placeholder="Full name" required />
           </div>
           
           <div class="form-group">
-            <label for="email" style="font-weight: 600;">Email *</label>
-            <input type="email" id="email" name="email" placeholder="your.email@example.com" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+            <label class="form-label" for="email">Email *</label>
+            <input class="form-input" type="email" id="email" name="email" placeholder="your.email@example.com" required />
           </div>
           
           <div class="form-group">
-            <label for="rollNumber" style="font-weight: 600;">Roll Number *</label>
-            <input type="text" id="rollNumber" name="rollNumber" placeholder="Your roll number" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+            <label class="form-label" for="rollNumber">Roll Number *</label>
+            <input class="form-input" type="text" id="rollNumber" name="rollNumber" placeholder="Your roll number" required />
           </div>
         </fieldset>
 
         <!-- Academic Information Section -->
-        <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; background: var(--surface);">
-          <legend style="font-weight: 700; color: var(--ink); padding: 0 8px;">Academic Details</legend>
+        <fieldset class="form-fieldset">
+          <legend>Academic Details</legend>
           
           <div class="form-group">
-            <label for="programme" style="font-weight: 600;">Programme/Course *</label>
-            <input type="text" id="programme" name="programme" placeholder="e.g. B.Tech CSE, M.Sc Biology" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+            <label class="form-label" for="programme">Programme/Course *</label>
+            <input class="form-input" type="text" id="programme" name="programme" placeholder="e.g. B.Tech CSE, M.Sc Biology" required />
           </div>
         </fieldset>
 
         <!-- Experience Information Section -->
-        <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; background: var(--surface);">
-          <legend style="font-weight: 700; color: var(--ink); padding: 0 8px;">Internship Experience</legend>
+        <fieldset class="form-fieldset">
+          <legend>Internship Experience</legend>
           
           <div class="form-group">
-            <label for="organization" style="font-weight: 600;">Place of Internship *</label>
-            <input type="text" id="organization" name="organization" placeholder="e.g. Location" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+            <label class="form-label" for="organization">Place of Internship *</label>
+            <input class="form-input" type="text" id="organization" name="organization" placeholder="e.g. Location" required />
           </div>
           
           <div class="form-group">
-            <label for="mentor" style="font-weight: 600;">Mentor/Supervisor *</label>
-            <input type="text" id="mentor" name="mentor" placeholder="Name of your supervisor" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+            <label class="form-label" for="mentor">Mentor/Supervisor *</label>
+            <input class="form-input" type="text" id="mentor" name="mentor" placeholder="Name of your supervisor" required />
           </div>
           
           <div class="form-group">
-            <label for="duration" style="font-weight: 600;">Duration *</label>
-            <input type="text" id="duration" name="duration" placeholder="e.g. 6 weeks, 2 months, June-August 2025" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);" />
+            <label class="form-label" for="duration">Duration *</label>
+            <input class="form-input" type="text" id="duration" name="duration" placeholder="e.g. 6 weeks, 2 months, June-August 2025" required />
           </div>
           
           <div class="form-group">
-            <label for="summary" style="font-weight: 600;">Your Experience Summary *</label>
-            <textarea id="summary" name="summary" placeholder="Describe your internship experience, what you learned, key achievements, and highlights..." rows="8" required style="width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: inherit; font-size: 1rem; resize: vertical;"></textarea>
-            <p style="margin: 6px 0 0; font-size: 0.85rem; color: var(--muted);">Share your story to inspire others</p>
+            <label class="form-label" for="summary">Your Experience Summary *</label>
+            <textarea class="form-textarea" id="summary" name="summary" placeholder="Describe your internship experience, what you learned, key achievements, and highlights..." rows="8" required></textarea>
+            <p style="margin: 0.45rem 0 0; font-size: 0.85rem; color: var(--muted);">Share your story to inspire others</p>
           </div>
         </fieldset>
 
         <!-- Media Section -->
-        <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 20px; background: var(--surface);">
-          <legend style="font-weight: 700; color: var(--ink); padding: 0 8px;">Your Photos</legend>
+        <fieldset class="form-fieldset">
+          <legend>Your Photos</legend>
           
           <div class="form-group">
-            <label for="photo" style="font-weight: 600; display: block; margin-bottom: 8px;">Profile Photo (Required) *</label>
-            <div style="padding: 16px; border: 2px dashed var(--accent-light); border-radius: var(--radius-sm); text-align: center; cursor: pointer; background: rgba(var(--accent-rgb, 59, 130, 246), 0.02);" onclick="document.getElementById('photo').click();">
-              <p style="margin: 0 0 6px; color: var(--ink); font-weight: 500;">Click to upload or drag and drop</p>
+            <label class="form-label" for="photo">Profile Photo (Required) *</label>
+            <div class="upload-zone" onclick="document.getElementById('photo').click();">
+              <strong>Click to upload or drag and drop</strong>
               <p style="margin: 0; font-size: 0.85rem; color: var(--muted);">JPG, PNG, or WEBP under 2MB</p>
             </div>
             <input type="file" id="photo" name="photo" accept="image/*" required style="display: none;" />
@@ -192,9 +365,9 @@
           </div>
           
           <div class="form-group">
-            <label for="gallery" style="font-weight: 600; display: block; margin-bottom: 8px;">Experience Photos (Optional - up to 5 images)</label>
-            <div style="padding: 16px; border: 2px dashed var(--accent-light); border-radius: var(--radius-sm); text-align: center; cursor: pointer; background: rgba(var(--accent-rgb, 59, 130, 246), 0.02);" onclick="document.getElementById('gallery').click();">
-              <p style="margin: 0 0 6px; color: var(--ink); font-weight: 500;">Click to upload or drag and drop</p>
+            <label class="form-label" for="gallery">Experience Photos (Optional - up to 5 images)</label>
+            <div class="upload-zone" onclick="document.getElementById('gallery').click();">
+              <strong>Click to upload or drag and drop</strong>
               <p style="margin: 0; font-size: 0.85rem; color: var(--muted);">Add multiple photos from your experience (JPG, PNG, WEBP under 2MB each)</p>
             </div>
             <input type="file" id="gallery" name="gallery" accept="image/*" multiple style="display: none;" />
@@ -202,9 +375,9 @@
           </div>
         </fieldset>
 
-        <div style="display: flex; gap: 10px; margin-top: 24px;">
-          <button type="submit" class="button primary" style="flex: 1;">Submit Your Experience</button>
-          <button type="button" class="button secondary" onclick="closeModal(event)" style="flex: 1;">Cancel</button>
+        <div class="form-actions">
+          <button type="submit" class="button primary">Submit Your Experience</button>
+          <button type="button" class="button secondary" onclick="closeModal(event)">Cancel</button>
         </div>
       </form>
     `;
