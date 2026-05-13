@@ -18,12 +18,6 @@
   </div>
 
   <div class="gallery-layout">
-    <div class="toolbar-shell gallery-toolbar" role="tablist" aria-label="Gallery filters">
-      <button class="gallery-filter-btn filter-chip active" data-filter="all" data-i18n="galleryAllPhotos" onclick="filterGallery('all')">All Photos</button>
-      <button class="gallery-filter-btn filter-chip" data-filter="profiles" data-i18n="galleryProfilePhotos" onclick="filterGallery('profiles')">Profile Photos</button>
-      <button class="gallery-filter-btn filter-chip" data-filter="experiences" data-i18n="galleryExperiencePhotos" onclick="filterGallery('experiences')">Experience Photos</button>
-    </div>
-
     <div id="gallery-grid" class="gallery-grid gallery-grid--wide">
       <!-- Loaded dynamically from API -->
     </div>
@@ -256,7 +250,6 @@
 <script>
   let allGalleryPhotos = [];
   let filteredPhotos = [];
-  let currentFilter = 'all';
   let currentModalIndex = 0;
 
   (async function() {
@@ -269,18 +262,6 @@
 
       // Build gallery from all approved submissions
       approved.forEach(submission => {
-        // Add profile photo
-        if (submission.avatarUrl || submission.thumbnail || submission.photo) {
-          const profilePhoto = submission.avatarUrl || submission.thumbnail || submission.photo;
-          allGalleryPhotos.push({
-            src: profilePhoto,
-            studentName: submission.studentName || 'Student',
-            organization: submission.organization || 'Organization',
-            type: 'profile',
-            submissionId: submission.id
-          });
-        }
-
         // Add gallery photos
         if (Array.isArray(submission.gallery) && submission.gallery.length > 0) {
           submission.gallery.forEach(photo => {
@@ -311,16 +292,18 @@
       return;
     }
 
-    container.innerHTML = filteredPhotos.map((photo, index) => `
-      <div class="gallery-item" onclick="openGalleryModal(${index})">
+    const sizes = ['small', 'medium', 'large'];
+    container.innerHTML = filteredPhotos.map((photo, index) => {
+      const size = sizes[Math.floor(Math.random() * sizes.length)];
+      return `
+      <div class="gallery-item ${size}" onclick="openGalleryModal(${index})">
         <img src="${escapeHtml(getPhotoSrc(photo.src))}" alt="Photo ${index + 1}" />
         <div class="gallery-item-meta">
-          <span class="gallery-type">${photo.type === 'profile' ? 'Profile Photo' : 'Experience Photo'}</span>
           <p class="meta-name">${escapeHtml(photo.studentName)}</p>
           <p class="meta-subtitle">${escapeHtml(photo.organization)}</p>
         </div>
       </div>
-    `).join('');
+    `}).join('');
   }
 
   function getPhotoSrc(src) {
@@ -329,27 +312,6 @@
       return src;
     }
     return `/api/uploads/avatars/${encodeURIComponent(src)}`;
-  }
-
-  function filterGallery(filter) {
-    currentFilter = filter;
-    currentModalIndex = 0;
-
-    // Update button styles
-    document.querySelectorAll('.gallery-filter-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.filter === filter);
-    });
-
-    // Filter photos
-    if (filter === 'all') {
-      filteredPhotos = [...allGalleryPhotos];
-    } else if (filter === 'profiles') {
-      filteredPhotos = allGalleryPhotos.filter(p => p.type === 'profile');
-    } else if (filter === 'experiences') {
-      filteredPhotos = allGalleryPhotos.filter(p => p.type === 'experience');
-    }
-
-    renderGallery();
   }
 
   function openGalleryModal(index) {
@@ -363,7 +325,7 @@
     img.src = getPhotoSrc(photo.src);
     img.onerror = () => { img.src = '/assets/Dev_Sanskriti_Vishwavidyalaya.png'; };
     title.textContent = photo.studentName;
-    info.textContent = `${photo.organization} • ${photo.type === 'profile' ? 'Profile Photo' : 'Experience Photo'} (${currentModalIndex + 1} of ${filteredPhotos.length})`;
+    info.textContent = `${photo.organization} • Experience Photo (${currentModalIndex + 1} of ${filteredPhotos.length})`;
     // Show the modal
     modal.style.display = 'flex';
 
