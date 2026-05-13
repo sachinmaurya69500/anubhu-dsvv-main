@@ -32,6 +32,9 @@
   /* Prefer strong solid accents instead of soft gradients */
   --gradient-primary: var(--brand);
   --gradient-accent: var(--accent);
+  /* brand heading sizing */
+  --brand-subtitle-size: 1rem;
+  --brand-main-scale: 1.5; /* brand-main = brand-subtitle * scale */
 }
 
 * {
@@ -306,7 +309,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brand-main {
-  font-size: 1.15rem;
+  font-size: calc(var(--brand-subtitle-size) * var(--brand-main-scale));
   line-height: 1;
   margin: 0;
   color: #fff;
@@ -327,7 +330,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brand-subtitle {
-  font-size: 0.95rem;
+  font-size: var(--brand-subtitle-size);
   line-height: 1.1;
   margin: 0;
   color: rgba(255,255,255,0.9);
@@ -485,7 +488,8 @@ h1, h2, h3, h4, h5, h6 {
   body.mobile-nav-open .site-nav { display: flex !important; }
 
   .brand-text-stack { display: none; }
-  .brand-main { font-size: 1rem; }
+  .brand-subtitle { font-size: calc(var(--brand-subtitle-size) * 0.95); }
+  .brand-main { font-size: calc(var(--brand-subtitle-size) * var(--brand-main-scale)); }
   .brand-logo { width: 48px; height: 48px; }
 }
 
