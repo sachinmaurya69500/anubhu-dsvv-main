@@ -31,9 +31,9 @@ Full-stack internship submission portal for Dev Sanskriti Vishwavidyalaya.
 1. Create a virtual environment:
 ```bash
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+ source sachin_mca_anubhuti/bin/activate  # On Windows: venv\Scripts\activate
 ```
-
+(base) sdc-dsvv@sdc-dsvv:~/Desktop/SDC STUDENTS PROJECT/Sachin MCA/anubhu-dsvv-main$ source sachin_mca_anubhuti/bin/activate
 2. Install dependencies:
 ```bash
 pip install -r requirements.txt
