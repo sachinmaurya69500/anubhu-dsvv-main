@@ -147,7 +147,7 @@
             <tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 0.75rem; font-size: 0.9rem;">${formatTimestamp(log.timestamp)}</td>
               <td style="padding: 0.75rem; font-size: 0.85rem; color: #666;">${escapeHtml(log.visitorId || 'N/A')}</td>
-              <td style="padding: 0.75rem;">${escapeHtml(maskEmail(log.userEmail))}</td>
+              <td style="padding: 0.75rem;" data-no-auto-translate="true">${escapeHtml(maskEmail(log.userEmail))}</td>
               <td style="padding: 0.75rem;">
                 <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 4px; 
                   background: ${getActionColor(log.action)}; font-size: 0.85rem; font-weight: 600;">

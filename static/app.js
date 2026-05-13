@@ -9,6 +9,10 @@ let followUpTranslationTimer = null;
 const originalTextNodeMap = new WeakMap();
 const originalAttrMap = new WeakMap();
 
+function looksLikeEmailText(text) {
+  return /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(String(text || '').trim());
+}
+
 const TRANSLATIONS = {
   en: {
     brandSubtitle: 'Dev Sanskriti Vishwavidyalaya',
@@ -201,6 +205,7 @@ function shouldSkipTranslationNode(node) {
   if (parent.hasAttribute('data-i18n') || parent.hasAttribute('data-i18n-html')) return true;
   const text = String(node.nodeValue || '').replace(/\s+/g, ' ').trim();
   if (!text || text.length < 2) return true;
+  if (looksLikeEmailText(text)) return true;
   if (/^[\d\s\W]+$/.test(text)) return true;
   return false;
 }
@@ -353,6 +358,9 @@ function getDynamicTranslatableElements() {
     }
     const text = (el.textContent || '').trim();
     if (!text || text.length < 2) {
+      return false;
+    }
+    if (looksLikeEmailText(text)) {
       return false;
     }
     if (/^[\d\s\W]+$/.test(text)) {

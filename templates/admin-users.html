@@ -94,7 +94,7 @@
           ${users.map(user => `
             <tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 0.75rem;">${escapeHtml(user.name || '-')}</td>
-              <td style="padding: 0.75rem;">${escapeHtml(user.email || '-')}</td>
+              <td style="padding: 0.75rem;" data-no-auto-translate="true">${escapeHtml(user.email || '-')}</td>
               <td style="padding: 0.75rem; font-size: 0.9rem;">${formatTimestamp(user.createdAt)}</td>
               <td style="padding: 0.75rem; font-size: 0.9rem;">${formatTimestamp(user.lastLoginAt)}</td>
               <td style="padding: 0.75rem;">
@@ -132,7 +132,7 @@
           ${events.map(event => `
             <tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 0.75rem; font-size: 0.9rem;">${formatTimestamp(event.createdAt)}</td>
-              <td style="padding: 0.75rem;">${escapeHtml(event.email || 'N/A')}</td>
+              <td style="padding: 0.75rem;" data-no-auto-translate="true">${escapeHtml(event.email || 'N/A')}</td>
               <td style="padding: 0.75rem;">
                 <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 4px; background: ${event.eventType === 'register' ? '#cfe2ff' : '#d4edda'}; font-size: 0.85rem; font-weight: 600;">
                   ${escapeHtml((event.eventType || 'UNKNOWN').toUpperCase())}
