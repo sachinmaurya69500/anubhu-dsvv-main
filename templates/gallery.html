@@ -32,7 +32,7 @@
   <div id="gallery-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-label="Gallery lightbox">
     <div class="modal-content gallery-modal-content" style="max-width: 90%; max-height: 90vh; display: flex; flex-direction: column; padding: 0; position: relative;" tabindex="-1">
 
-      <div class="gallery-modal-top" style="position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0)); z-index: 10;">
+      <div class="gallery-modal-top" style="position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: rgba(0,0,0,0.45); z-index: 10;">
         <div>
           <p style="margin: 0 0 4px; color: rgba(255,255,255,0.85); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;">Photo View</p>
           <h3 id="modal-title" style="margin: 0; color: white; font-size: 1.05rem;"></h3>
@@ -55,7 +55,7 @@
         </div>
       </div>
 
-      <div class="gallery-modal-bottom" style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; padding: 12px 18px; background: linear-gradient(0deg, rgba(0,0,0,0.45), rgba(0,0,0,0)); z-index: 10;">
+      <div class="gallery-modal-bottom" style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; padding: 12px 18px; background: rgba(0,0,0,0.45); z-index: 10;">
         <div style="color: rgba(255,255,255,0.9); font-size: 0.95rem; text-align:center;">Use ← → keys or swipe to navigate · Double-tap to zoom</div>
       </div>
 
@@ -172,7 +172,7 @@
 
   .gallery-page {
     padding: 2rem 0 2.5rem;
-    background: linear-gradient(180deg, rgba(247, 250, 252, 0.72), rgba(255, 255, 255, 0.98));
+    background: var(--bg-alt);
   }
 
   .gallery-page .page-intro {

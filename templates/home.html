@@ -66,7 +66,7 @@ Regular social services are given by the unit of National Social Service of univ
       
       <!-- Right: Archives (replacing "What's New") -->
       <div class="featured-exp-right">
-        <h3 class="featured-exp-right-title">UPCOMING EVENTS <img class="heading-gif" src="/upcoming.gif" alt="coming soon" onerror="this.style.display='none'" /></h3>
+        <h3 class="featured-exp-right-title" data-i18n="homeArchivesTitle">Archives</h3>
         <div class="featured-archives-box" id="featured-archives-box">
           <div class="loading-state">
             <p>Loading archives...</p>
@@ -391,27 +391,35 @@ Regular social services are given by the unit of National Social Service of univ
     const container = document.getElementById('featured-archives-box');
     if (!container) return;
 
-    const referenceEvents = [
-      { day: '15', month: 'May', year: '2026', title: 'Poetry Writing Competition' },
-      { day: '16', month: 'May', year: '2026', title: 'Article Writing Competition' },
-      { day: '18', month: 'May', year: '2026', title: 'Sanskrit language Reading activity' },
-      { day: '20', month: 'May', year: '2026', title: 'Public Speaking Mastery Session' },
-      { day: '23', month: 'May', year: '2026', title: 'Open Mic: Poetry, Storytelling & Social Themes' },
-      { day: '26', month: 'May', year: '2026', title: 'Podcast Creation Bootcamp for Beginners' },
-    ];
+    if (!Array.isArray(volumes) || !volumes.length) {
+      container.innerHTML = `<div class="archive-items-wrapper"><p style="margin: 0; padding: 14px; color: var(--muted);">No archives yet.</p></div>`;
+      return;
+    }
 
-    container.innerHTML = `<div class="archive-items-wrapper">${referenceEvents.map((event) => `
+    const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    container.innerHTML = `<div class="archive-items-wrapper">${volumes.map((volume, index) => {
+      const fallbackDate = new Date(Number(volume.year) || new Date().getFullYear(), index % 12, Math.min(28, (index + 1) * 3));
+      const parsedDate = volume.publishedAt ? new Date(volume.publishedAt) : fallbackDate;
+      const date = Number.isNaN(parsedDate.getTime()) ? fallbackDate : parsedDate;
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = monthShort[date.getMonth()] || 'Jan';
+      const year = String(date.getFullYear());
+
+      return `
       <div class="archive-item">
         <span class="archive-item-badge">
-          <span class="date-day">${event.day}</span>
-          <span class="date-month">${event.month}</span>
-          <span class="date-year">${event.year}</span>
+          <span class="date-day">${day}</span>
+          <span class="date-month">${month}</span>
+          <span class="date-year">${year}</span>
         </span>
         <div class="archive-item-title">
-          <div class="archive-link">${escapeHtml(event.title)}</div>
+          <a href="/archive?vol=${encodeURIComponent(volume.id)}" class="archive-link">${escapeHtml(volume.volumeLabel)}</a>
+          <div class="archive-item-desc">${volume.items} submissions · ${escapeHtml(volume.description || '')}</div>
         </div>
       </div>
-    `).join('')}</div>`;
+    `;
+    }).join('')}</div>`;
   }
 
   function renderFeaturedExperienceBox() {

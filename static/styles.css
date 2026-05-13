@@ -1173,7 +1173,8 @@ h1, h2, h3, h4, h5, h6 {
   bottom: 0;
   z-index: 1;
   padding: 1rem;
-  color: white;
+  color: #000;
+  background: transparent;
 }
 
 .gallery-item-meta .meta-name {
@@ -1185,7 +1186,7 @@ h1, h2, h3, h4, h5, h6 {
 .gallery-item-meta .meta-subtitle {
   margin: 0.3rem 0 0;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.84);
+  color: #000;
 }
 
 .gallery-type {
@@ -1195,8 +1196,8 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 0.6rem;
   padding: 0.35rem 0.65rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+  background: transparent;
+  color: #000;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;

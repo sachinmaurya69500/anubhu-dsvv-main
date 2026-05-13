@@ -370,7 +370,7 @@
     align-items: stretch;
   }
   .stat {
-    background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(250,252,255,0.8));
+    background: var(--surface);
     padding: 1rem 1.25rem;
     border-radius: 12px;
     display: flex;
@@ -390,7 +390,7 @@
     justify-content: center;
     font-size: 1.15rem;
     color: var(--brand);
-    background: linear-gradient(180deg, rgba(0,61,153,0.06), rgba(255,215,0,0.03));
+    background: var(--brand-soft);
     flex: 0 0 48px;
   }
 
@@ -428,7 +428,7 @@
   table thead th {
     position: sticky;
     top: 0;
-    background: linear-gradient(180deg,#ffffff,#fbfdff);
+    background: var(--surface);
     z-index: 5;
   }
 
@@ -492,7 +492,7 @@
 
   .traffic-source .bar {
     height: 8px;
-    background: linear-gradient(90deg, var(--brand) 0%, rgba(0,61,153,0.15) 100%);
+    background: var(--brand);
     border-radius: 6px;
     width: 40%;
     margin-left: 1rem;
