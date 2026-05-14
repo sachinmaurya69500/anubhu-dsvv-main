@@ -4,31 +4,60 @@
 
 {% block content %}
 
-<!-- Featured gallery strip: recent images from gallery -->
-<section class="content-section featured-gallery-section">
-  <div class="featured-gallery" aria-label="Featured gallery">
+<section class="barc-home">
+  <div class="barc-utility-strip" aria-label="Quick access links">
+    <a href="#main-content" class="barc-utility-link">Skip to main content</a>
+    <div class="barc-accessibility-tools" aria-label="Accessibility controls">
+      <button type="button" class="barc-tool">A+</button>
+      <button type="button" class="barc-tool">A</button>
+      <button type="button" class="barc-tool">A-</button>
+    </div>
+    <a href="/gallery" class="barc-utility-link" data-i18n="homeExploreGallery">Gallery</a>
+    <a href="/forms" class="barc-utility-link" data-i18n="homeShareStory">Share Story</a>
+  </div>
+
+  <!-- Featured gallery strip: recent images from gallery -->
+  <section class="content-section featured-gallery-section">
+    <div class="featured-gallery" aria-label="Featured gallery">
         <div class="featured-gallery-main" id="featured-gallery-main">
           <div class="featured-main-media">
             <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Featured photo" id="featured-main-img" />
-            <div class="featured-main-overlay">
-              <div class="featured-main-caption">
-                <h3 id="featured-main-title">Featured Photo</h3>
-                <p id="featured-main-sub">Experience Photo</p>
+              <div class="featured-main-overlay">
+                <div class="featured-main-caption">
+                  <p class="featured-main-count" id="featured-main-count">1 / 1</p>
+                </div>
               </div>
-            </div>
           </div>
-          <!-- Featured Gallery Buttons -->
-          <div class="featured-gallery-buttons">
-            <a href="#featured-experience-showcase" class="featured-btn featured-btn-primary" data-i18n="homeViewExperiences">View Experiences</a>
-            <a href="/gallery" class="featured-btn featured-btn-secondary" data-i18n="homeExploreGallery">Explore Gallery</a>
-            <a href="/auth?next=/forms" id="share-story-btn" class="featured-btn featured-btn-tertiary" data-i18n="homeShareStory">Share Your Story</a>
-          </div>
+          <div class="featured-gallery-dots" id="featured-gallery-dots" aria-label="Featured photo navigation"></div>
         </div>
-    <div class="featured-gallery-rail" id="featured-gallery-rail" aria-hidden="false">
-      <!-- thumbnails inserted here -->
-    </div>
   </div>
-</section>
+    </section>
+
+  <section class="barc-hero" id="main-content">
+    <div class="barc-hero-copy">
+      <p class="barc-hero-kicker" data-i18n="homeInstitutionKicker">Anubhuti Portal</p>
+      <h2 data-i18n="homeInstitutionTitle">Student experiences from Dev Sanskriti Vishwavidyalaya</h2>
+      <p class="barc-hero-lead" data-i18n="homeInstitutionLead">Explore internships, fieldwork stories, archive volumes, and student-led learning in a clean institutional layout shaped around your portal.</p>
+      <div class="barc-hero-actions">
+        <a href="#featured-experience-showcase" class="button primary" data-i18n="homeViewExperiences">View Experiences</a>
+        <a href="#featured-experience-showcase" class="button secondary" data-i18n="homeExploreUpdates">Explore Updates</a>
+      </div>
+    </div>
+    <div class="barc-hero-panel">
+      <div class="barc-hero-panel-image">
+        <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Dev Sanskriti Vishwavidyalaya campus" />
+      </div>
+      <div class="barc-hero-panel-caption">
+          <h3 data-i18n="homeSpotlightTitle">Featured Story</h3>
+          <p data-i18n="homeSpotlightText">A spotlight on a student journey, supported by archive highlights and recent updates.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="barc-announcement-strip" aria-label="Announcements">
+    <span class="barc-announcement-label" data-i18n="homeAnnouncementsLabel">Announcements</span>
+      <div class="barc-announcement-marquee" data-i18n="homeAnnouncementText">Featured stories, archive volumes, and recent student experiences are highlighted below.</div>
+  </section>
 
 <!-- Featured experience section: two-column layout (featured experience + archives) -->
 <!-- Vision section (from vision.png) - placed below featured gallery -->
@@ -38,18 +67,13 @@
       <img src="/api/uploads/avatars/Pt.ShriramSharma_acharya.jpg" alt="Our Vision" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />
     </div>
     <div class="vision-content">
-      <h2 class="vision-title" data-i18n="homeVisionTitle">Our Vision</h2>
-      <p class="vision-text" data-i18n="homeVisionText">Internship Programme is one of the unique learning experiences for a student which is meticulously designed and executed for at least 1 months for each student. It is one of the distinguishing features of DSVV education.
-
-This unique program not only guarantees students application of what they’ve learned in class, but also presents an opportunity for them to gain valuable career related experiences, make contacts in their chosen field, and better the world through their knowledge.  It includes experiences in the field of health, education, alternative therapies, social service, mass awakening.
-
-Village adoption and model village Development Programme for ushering in a new social order based upon the vision of Gurudev is run by the students of the Department of Rural Management.
-
-Regular social services are given by the unit of National Social Service of university.</p>
+      <h2 class="vision-title" data-i18n="homeVisionTitle">About Anubhuti</h2>
+      <p class="vision-text" data-i18n="homeVisionText">Anubhuti is the internship and fieldwork experience portal for Dev Sanskriti Vishwavidyalaya. It documents student journeys, academic initiatives, community outreach, and experiential learning across departments in a clear institutional format.</p>
     </div>
   </div>
 </section>
 
+<section class="barc-two-column-grid">
 <section class="content-section featured-experience-showcase" id="featured-experience-showcase">
     <div class="featured-experience-wrapper">
       <!-- Left: Featured Experience -->
@@ -66,7 +90,7 @@ Regular social services are given by the unit of National Social Service of univ
       
       <!-- Right: Archives (replacing "What's New") -->
       <div class="featured-exp-right">
-        <h3 class="featured-exp-right-title" data-i18n="homeArchivesTitle">Archives</h3>
+        <h3 class="featured-exp-right-title" data-i18n="homeArchivesTitle">Updates</h3>
         <div class="featured-archives-box" id="featured-archives-box">
           <div class="loading-state">
             <p>Loading archives...</p>
@@ -75,16 +99,21 @@ Regular social services are given by the unit of National Social Service of univ
       </div>
     </div>
 </section>
+</section>
 
 <!-- Experience Cards Section - Display 3 cards -->
 <section class="content-section experience-cards-section">
+    <div class="barc-card-header barc-experience-header">
+      <h3 data-i18n="homeStudentVoices">Student Voices</h3>
+      <p data-i18n="homeStudentVoicesDesc">Recent student narratives and experience cards.</p>
+    </div>
     <div class="experience-cards-grid" id="home-experience-rail" aria-live="polite"></div>
 </section>
 
 
 <section class="content-section section-spacing">
   <div class="container">
-    <p style="margin: 0; text-align: center; font-size: 1rem; font-weight: 600; color: var(--ink);">
+    <p class="barc-footer-note-text" style="margin: 0; text-align: center; font-size: 1rem; font-weight: 600; color: var(--ink);">
       <span data-i18n="homeVisitorsLabel">Total visits :</span> <span id="stat-visitors" style="color: var(--accent); font-weight: 700;">0</span>
     </p>
   </div>
@@ -97,6 +126,9 @@ Regular social services are given by the unit of National Social Service of univ
   let _submissionsMap = {}; // Store submissions by ID for modal gallery lookup
   let homeExperiences = [];
   let homeFeaturedExperience = null;
+  let featuredGalleryPhotos = [];
+  let featuredGalleryIndex = 0;
+  let featuredGalleryTimer = null;
 
   const previewLength = 180;
 
@@ -189,6 +221,10 @@ Regular social services are given by the unit of National Social Service of univ
     return clean.length > maxLength ? `${clean.slice(0, maxLength).trim()}...` : clean;
   }
 
+  function normalizeFullText(text) {
+    return String(text || '').replace(/\.{3,}\s*$/, '').trim();
+  }
+
   function renderHomeFeaturedExperience() {
     const container = document.getElementById('home-featured-experience');
     if (!container) return;
@@ -198,7 +234,7 @@ Regular social services are given by the unit of National Social Service of univ
     }
 
     const imageSrc = getHomeExperienceImageSrc(homeFeaturedExperience);
-    const detailText = homeFeaturedExperience.summary || homeFeaturedExperience.summaryPreview || '';
+    const detailText = normalizeFullText(homeFeaturedExperience.summary || homeFeaturedExperience.summaryPreview || '');
     const intro = homeFeaturedExperience.organization || homeFeaturedExperience.programme || 'Featured student story';
 
     container.innerHTML = `
@@ -247,7 +283,7 @@ Regular social services are given by the unit of National Social Service of univ
   function renderHomeExperienceCard(item, index) {
     const theme = ['theme-navy', 'theme-teal', 'theme-forest'][index % 3];
     const imageSrc = getHomeExperienceImageSrc(item);
-    const quote = item.summaryPreview || makeHomePreview(item.summary || '', 220);
+    const quote = makeHomePreview(item.summary || item.summaryPreview || '', 180);
     const academicLine = [item.programme, item.duration].filter(Boolean).join(' | ');
     const locationText = item.organization || 'Location unavailable';
 
@@ -447,8 +483,8 @@ Regular social services are given by the unit of National Social Service of univ
       </div>
     `;
 
-    // Show a short preview and a 'View more' button that opens the modal with full experience
-    const previewText = current.summaryPreview || makeHomePreview(current.summary || '', 220);
+    // Show a readable preview and a 'View more' button that opens the modal with full experience
+    const previewText = makeHomePreview(current.summary || current.summaryPreview || '', 180);
     descContainer.innerHTML = `
       <p style="margin:0 0 12px; color: var(--ink);">${escapeHtml(previewText)}</p>
       <div style="margin-top:8px;">
@@ -522,7 +558,7 @@ Regular social services are given by the unit of National Social Service of univ
 
         <div class="testimonial-copy" id="${summaryId}" style="margin-top:12px;">
           <p class="testimonial-summary" id="${previewId}">${escapeHtml(submission.summaryPreview)}</p>
-          ${isAuthenticated && submission.summary ? `<p class="testimonial-summary full" id="${fullId}" aria-hidden="true">${escapeHtml(submission.summary)}</p>` : ''}
+          ${isAuthenticated && submission.summary ? `<p class="testimonial-summary full" id="${fullId}" aria-hidden="true">${escapeHtml(submission.summaryPreview)}</p>` : ''}
         </div>
         <div class="testimonial-footer">
           <button
@@ -553,7 +589,7 @@ Regular social services are given by the unit of National Social Service of univ
         <div class="featured-experience-content">
           <h3 style="margin-top:0;">${escapeHtml(submission.studentName)}</h3>
           <p class="meta" style="color: var(--muted); margin-top: 6px;">${escapeHtml(submission.organization)} • ${escapeHtml(submission.duration || '')}</p>
-          <p style="margin-top: 12px; color: var(--ink);">${escapeHtml(submission.summaryPreview)}</p>
+          <p style="margin-top: 12px; color: var(--ink); line-height: 1.7;">${escapeHtml(submission.summaryPreview)}</p>
           <div style="margin-top: 14px;">
             <button class="button primary" onclick="openExperienceModal('${escapeJs(submission.id)}')">View more</button>
           </div>
@@ -1007,16 +1043,27 @@ Regular social services are given by the unit of National Social Service of univ
     box-shadow: 0 8px 24px rgba(255, 255, 255, 0.4);
   }
 
-  /* remove overlay gradient entirely */
-  .featured-main-overlay { display: none !important; }
+  /* keep overlay and caption visible so the full featured image context is shown */
+  .featured-main-overlay {
+    display: flex !important;
+    align-items: flex-end;
+    justify-content: flex-start;
+    background: linear-gradient(to top, rgba(0, 24, 48, 0.58), rgba(0, 24, 48, 0.04));
+  }
 
-  /* remove any caption text so image is clean */
-  .featured-main-caption { display: none !important; }
+  .featured-main-caption {
+    display: block !important;
+  }
 
-  /* hide thumbnails/rail entirely (keeps rotation logic intact) */
-  .featured-gallery-rail { display: none !important; }
+  /* show thumbnails/rail so all gallery items are visible */
+  .featured-gallery-rail {
+    display: flex !important;
+    flex-wrap: wrap;
+  }
 
-  .featured-thumb { display: none !important; }
+  .featured-thumb {
+    display: block !important;
+  }
 
   /* unbox the surrounding section so the image sits flush under the menu */
   .content-section.featured-gallery-section { padding-top: 0; padding-bottom: 0; margin-top: 0; background: transparent; }
@@ -1061,47 +1108,78 @@ Regular social services are given by the unit of National Social Service of univ
       const submissions = Array.isArray(bootstrap.submissions) ? bootstrap.submissions : [];
 
       const photos = [];
-      // collect only experience/gallery photos, most-recent-first
-      for (let i = submissions.length - 1; i >= 0 && photos.length < 20; i--) {
+      // collect only the latest available photo for the featured strip
+      for (let i = submissions.length - 1; i >= 0 && photos.length < 8; i--) {
         const s = submissions[i];
         if (!s || !Array.isArray(s.gallery) || s.gallery.length === 0) continue;
-        for (let j = s.gallery.length - 1; j >= 0 && photos.length < 20; j--) {
+        for (let j = s.gallery.length - 1; j >= 0 && photos.length < 8; j--) {
           photos.push({src: s.gallery[j], title: s.studentName || ''});
         }
       }
 
       if (photos.length === 0) return;
 
-      const rail = document.getElementById('featured-gallery-rail');
+      featuredGalleryPhotos = photos.map((photo) => ({ src: getPhotoSrc(photo.src), title: photo.title }));
       const mainImg = document.getElementById('featured-main-img');
-      const mainTitle = document.getElementById('featured-main-title');
-      const mainSub = document.getElementById('featured-main-sub');
+      const mainCount = document.getElementById('featured-main-count');
+      const mainMedia = document.querySelector('.featured-main-media');
+      const dotsWrap = document.getElementById('featured-gallery-dots');
+      const dotButtons = [];
 
-      const normalized = photos.slice(0, 12).map(p => ({src: getPhotoSrc(p.src), title: p.title}));
-
-      // render thumbnails
-      rail.innerHTML = normalized.map((p, idx) => `
-        <div class="featured-thumb" data-idx="${idx}" onclick="setFeaturedGallery(${idx})">
-          <img src="${escapeHtml(p.src)}" alt="${escapeHtml(p.title)}" />
-        </div>
-      `).join('');
-
-      // set first as main
-      function setActive(index){
-        mainImg.src = normalized[index].src;
-        mainTitle.textContent = normalized[index].title || 'Featured Photo';
-        mainSub.textContent = 'Experience Photo';
-        rail.querySelectorAll('.featured-thumb').forEach((el,i)=> el.classList.toggle('active', i===index));
+      function buildFeaturedDots() {
+        if (!dotsWrap) return;
+        dotsWrap.innerHTML = '';
+        dotButtons.length = 0;
+        featuredGalleryPhotos.forEach((_, index) => {
+          const dot = document.createElement('button');
+          dot.type = 'button';
+          dot.className = 'featured-gallery-dot';
+          dot.setAttribute('aria-label', `Show featured photo ${index + 1}`);
+          dot.addEventListener('click', () => window.setFeaturedGallery(index));
+          dotsWrap.appendChild(dot);
+          dotButtons.push(dot);
+        });
       }
 
-      window.setFeaturedGallery = function(index){ setActive(index); };
+      function renderFeaturedPhoto() {
+        if (!featuredGalleryPhotos.length || !mainImg) return;
+        const current = featuredGalleryPhotos[featuredGalleryIndex];
+        if (mainMedia) {
+          mainMedia.classList.remove('is-animating');
+          void mainMedia.offsetWidth;
+          mainMedia.classList.add('is-animating');
+          window.setTimeout(() => {
+            mainMedia.classList.remove('is-animating');
+          }, 380);
+        }
+        mainImg.src = current.src;
+        if (mainCount) mainCount.textContent = `${featuredGalleryIndex + 1} / ${featuredGalleryPhotos.length}`;
+        dotButtons.forEach((dot, index) => {
+          dot.classList.toggle('is-active', index === featuredGalleryIndex);
+        });
+      }
 
-      // helper to set from outside
-      setActive(0);
+      window.setFeaturedGallery = function(index) {
+        if (index >= 0 && index < featuredGalleryPhotos.length) {
+          featuredGalleryIndex = index;
+          renderFeaturedPhoto();
+        }
+      };
 
-      // simple auto rotate every 6s
-      let rotate = 0;
-      setInterval(()=>{ rotate = (rotate + 1) % normalized.length; setActive(rotate); }, 6000);
+      window.stepFeaturedGallery = function(direction) {
+        if (!featuredGalleryPhotos.length) return;
+        featuredGalleryIndex = (featuredGalleryIndex + direction + featuredGalleryPhotos.length) % featuredGalleryPhotos.length;
+        renderFeaturedPhoto();
+      };
+
+      buildFeaturedDots();
+
+      if (featuredGalleryTimer) clearInterval(featuredGalleryTimer);
+      if (featuredGalleryPhotos.length > 1) {
+        featuredGalleryTimer = setInterval(() => window.stepFeaturedGallery(1), 6000);
+      }
+
+      renderFeaturedPhoto();
 
       function getPhotoSrc(src){
         if (!src) return '/assets/Dev_Sanskriti_Vishwavidyalaya.png';
@@ -1130,7 +1208,7 @@ Regular social services are given by the unit of National Social Service of univ
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
-    aspect-ratio: 16 / 5;
+    aspect-ratio: 16 / 6;
     border-radius: 0;
     overflow: visible;
     background: transparent;
@@ -1141,16 +1219,8 @@ Regular social services are given by the unit of National Social Service of univ
   .featured-main-media { width: 100%; height: 100%; position: relative; }
   .featured-main-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  /* Remove overlay gradient and captions entirely */
-  .featured-main-overlay { display: none !important; }
-  .featured-main-caption { display: none !important; }
-
-  /* Hide thumbnails/rail entirely */
-  .featured-gallery-rail { display: none !important; }
-  .featured-thumb { display: none !important; }
-
   @media (max-width: 900px) {
-    .featured-gallery-main { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); aspect-ratio: 4 / 3; }
+    .featured-gallery-main { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); aspect-ratio: 4 / 2.8; }
   }
 
   /* Featured Experience Showcase - Cleaner, Less Bloated */
@@ -1371,8 +1441,8 @@ Regular social services are given by the unit of National Social Service of univ
     color: var(--ink);
     padding: 0;
     border-radius: 6px;
-    max-height: 556px;
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .featured-archives-box .archive-items-wrapper {
