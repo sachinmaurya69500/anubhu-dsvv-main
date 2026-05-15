@@ -2771,6 +2771,10 @@ h1, h2, h3, h4, h5, h6 {
   color: white;
   margin-right: 8px;
   transition: transform 180ms ease, background 180ms ease;
+  -webkit-transition: transform 180ms ease, background 180ms ease;
+  -moz-transition: transform 180ms ease, background 180ms ease;
+  -ms-transition: transform 180ms ease, background 180ms ease;
+  -o-transition: transform 180ms ease, background 180ms ease;
 }
 .social-badge:hover { transform: translateY(-4px); background: var(--gold); color: var(--brand-dark); }
 
@@ -3321,8 +3325,8 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
 }
 .featured-experience-wrapper {
-  max-width: 1180px;
-  margin-left: auto;
+  max-width:max-content;
+  margin-left:auto;
   margin-right: auto;
   display: grid;
   grid-template-columns: 1fr 360px;
@@ -3443,14 +3447,20 @@ h1, h2, h3, h4, h5, h6 {
 
 .barc-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   align-items: stretch;
-  padding: 1.75rem;
-  background: linear-gradient(135deg, #f5fbfd 0%, #ffffff 100%);
+  padding: 2.2rem;
+  background:
+    linear-gradient(135deg, rgba(0, 24, 48, 0.80), rgba(0, 24, 48, 0.50)),
+    var(--barc-hero-bg, linear-gradient(135deg, #f5fbfd 0%, #ffffff 100%));
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   border: 1px solid var(--line);
   border-radius: 1.15rem;
   box-shadow: var(--shadow-md);
+  color: #fff;
 }
 
 .barc-hero-copy {
@@ -3459,11 +3469,13 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   gap: 1rem;
   padding: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .barc-hero-kicker {
   margin: 0;
-  color: #0f5b73;
+  color: #f5fbfd;
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -3472,7 +3484,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .barc-hero-copy h2 {
   margin: 0;
-  color: var(--brand-dark);
+  color: #fff;
   font-size: clamp(2rem, 4vw, 3.4rem);
   line-height: 1.05;
   max-width: 14ch;
@@ -3481,9 +3493,15 @@ h1, h2, h3, h4, h5, h6 {
 .barc-hero-lead {
   margin: 0;
   max-width: 42rem;
-  color: var(--ink);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 1.08rem;
   line-height: 1.8;
+}
+
+.barc-hero-copy .button.secondary {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .barc-hero-actions {
@@ -3495,41 +3513,31 @@ h1, h2, h3, h4, h5, h6 {
 .barc-hero-panel {
   display: flex;
   flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 1rem;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-}
-
-.barc-hero-panel-image {
-  min-height: 18rem;
-  background: var(--surface-strong);
-}
-
-.barc-hero-panel-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+  position: relative;
+  z-index: 1;
 }
 
 .barc-hero-panel-caption {
   padding: 1.15rem 1.15rem 1.2rem;
-  border-top: 4px solid var(--accent);
+  border-top: 4px solid rgba(255, 255, 255, 0.65);
 }
 
 .barc-hero-panel-caption h3,
 .barc-card-header h3 {
   margin: 0 0 0.35rem;
-  color: var(--brand-dark);
+  color: #fff;
   font-size: 1.1rem;
 }
 
 .barc-hero-panel-caption p,
 .barc-card-header p {
   margin: 0;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.9);
   line-height: 1.65;
   font-size: 0.98rem;
 }
@@ -3594,31 +3602,6 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 0.85rem;
 }
 
-.barc-home .featured-gallery-section {
-  padding-top: 0;
-}
-
-.barc-home .featured-gallery-buttons {
-  justify-content: flex-start;
-}
-
-.barc-home .featured-gallery-main {
-  border-radius: 0.95rem;
-  overflow: hidden;
-}
-
-.featured-gallery-main {
-  display: flex;
-  flex-direction: column;
-}
-
-.featured-main-media {
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
-  position: relative;
-}
-
 .barc-home .featured-exp-left,
 .barc-home .featured-exp-right,
 .barc-home .experience-card,
@@ -3644,88 +3627,12 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 0.9rem;
 }
 
-.barc-home .featured-main-overlay {
-  display: flex !important;
-  align-items: flex-end;
-  background: linear-gradient(to top, rgba(0, 24, 48, 0.56), rgba(0, 24, 48, 0.02));
-}
-
-.barc-home .featured-main-caption {
-  display: block !important;
-}
-
-.barc-home .featured-main-caption h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.barc-home .featured-main-caption p {
-  margin: 0.15rem 0 0;
-}
-
-.featured-main-media.is-animating img {
-  animation: featured-rise-in 0.34s ease both;
-}
-
-.featured-main-media.is-animating .featured-main-overlay {
-  animation: featured-overlay-rise 0.34s ease both;
-}
-
-.featured-main-media img {
-  transition: opacity 0.32s ease, transform 0.32s ease;
-}
-
-.featured-main-media.is-animating img {
-  opacity: 0.14;
-  transform: translateY(12px) scale(0.99);
-}
-
-.featured-main-media.is-animating .featured-main-overlay {
-  opacity: 0.94;
-}
-
-@keyframes featured-rise-in {
-  from {
-    opacity: 0.14;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes featured-overlay-rise {
-  from {
-    opacity: 0.94;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.barc-home .featured-main-count {
-  margin-top: 0.45rem;
-  display: inline-flex;
-  align-items: center;
-  padding: 0.28rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
 .featured-gallery-dots {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.6rem;
-  padding: 0.85rem 0 0.25rem;
+  padding: 0.2rem 0 0;
+  margin-top: 0.75rem;
   position: relative;
   z-index: 4;
 }
@@ -3743,6 +3650,10 @@ h1, h2, h3, h4, h5, h6 {
   width: 2.1rem;
   background: var(--accent);
   box-shadow: none;
+}
+
+.hero-gallery-dots {
+  justify-content: flex-start;
 }
 
 @media (max-width: 960px) {

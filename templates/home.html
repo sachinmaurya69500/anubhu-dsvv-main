@@ -16,41 +16,16 @@
     <a href="/forms" class="barc-utility-link" data-i18n="homeShareStory">Share Story</a>
   </div>
 
-  <!-- Featured gallery strip: recent images from gallery -->
-  <section class="content-section featured-gallery-section">
-    <div class="featured-gallery" aria-label="Featured gallery">
-        <div class="featured-gallery-main" id="featured-gallery-main">
-          <div class="featured-main-media">
-            <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Featured photo" id="featured-main-img" />
-              <div class="featured-main-overlay">
-                <div class="featured-main-caption">
-                  <p class="featured-main-count" id="featured-main-count">1 / 1</p>
-                </div>
-              </div>
-          </div>
-          <div class="featured-gallery-dots" id="featured-gallery-dots" aria-label="Featured photo navigation"></div>
-        </div>
-  </div>
-    </section>
-
   <section class="barc-hero" id="main-content">
     <div class="barc-hero-copy">
-      <p class="barc-hero-kicker" data-i18n="homeInstitutionKicker">Anubhuti Portal</p>
-      <h2 data-i18n="homeInstitutionTitle">Student experiences from Dev Sanskriti Vishwavidyalaya</h2>
-      <p class="barc-hero-lead" data-i18n="homeInstitutionLead">Explore internships, fieldwork stories, archive volumes, and student-led learning in a clean institutional layout shaped around your portal.</p>
+      <p class="barc-hero-kicker" data-i18n="homeInstitutionKicker">Institutional Learning Portal</p>
+      <h2 data-i18n="homeInstitutionTitle">Anubhuti at Dev Sanskriti Vishwavidyalaya</h2>
+      <p class="barc-hero-lead" data-i18n="homeInstitutionLead">Browse approved student experiences, archive volumes, and institutional updates in a formal presentation built around the Anubhuti portal.</p>
       <div class="barc-hero-actions">
         <a href="#featured-experience-showcase" class="button primary" data-i18n="homeViewExperiences">View Experiences</a>
         <a href="#featured-experience-showcase" class="button secondary" data-i18n="homeExploreUpdates">Explore Updates</a>
       </div>
-    </div>
-    <div class="barc-hero-panel">
-      <div class="barc-hero-panel-image">
-        <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Dev Sanskriti Vishwavidyalaya campus" />
-      </div>
-      <div class="barc-hero-panel-caption">
-          <h3 data-i18n="homeSpotlightTitle">Featured Story</h3>
-          <p data-i18n="homeSpotlightText">A spotlight on a student journey, supported by archive highlights and recent updates.</p>
-      </div>
+      <div class="featured-gallery-dots hero-gallery-dots" id="featured-gallery-dots" aria-label="Featured photo navigation"></div>
     </div>
   </section>
 
@@ -131,6 +106,14 @@
   let featuredGalleryTimer = null;
 
   const previewLength = 180;
+  const escapeHtml = window.escapeHtml || ((value) =>
+    String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;'));
+  window.escapeHtml = escapeHtml;
 
   (async function() {
     try {
@@ -1120,9 +1103,7 @@
       if (photos.length === 0) return;
 
       featuredGalleryPhotos = photos.map((photo) => ({ src: getPhotoSrc(photo.src), title: photo.title }));
-      const mainImg = document.getElementById('featured-main-img');
-      const mainCount = document.getElementById('featured-main-count');
-      const mainMedia = document.querySelector('.featured-main-media');
+      const heroSection = document.querySelector('.barc-hero');
       const dotsWrap = document.getElementById('featured-gallery-dots');
       const dotButtons = [];
 
@@ -1142,18 +1123,9 @@
       }
 
       function renderFeaturedPhoto() {
-        if (!featuredGalleryPhotos.length || !mainImg) return;
+        if (!featuredGalleryPhotos.length || !heroSection) return;
         const current = featuredGalleryPhotos[featuredGalleryIndex];
-        if (mainMedia) {
-          mainMedia.classList.remove('is-animating');
-          void mainMedia.offsetWidth;
-          mainMedia.classList.add('is-animating');
-          window.setTimeout(() => {
-            mainMedia.classList.remove('is-animating');
-          }, 380);
-        }
-        mainImg.src = current.src;
-        if (mainCount) mainCount.textContent = `${featuredGalleryIndex + 1} / ${featuredGalleryPhotos.length}`;
+        heroSection.style.setProperty('--barc-hero-bg', `url("${current.src}")`);
         dotButtons.forEach((dot, index) => {
           dot.classList.toggle('is-active', index === featuredGalleryIndex);
         });
@@ -1228,18 +1200,17 @@
     background: #fff;
     padding: 2rem 0;
     margin: 0;
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
+    width: 100%;
+    border-radius: 0;
   }
 
   .featured-experience-wrapper {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2.5rem;
+    grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.9fr);
+    gap: 3rem;
     align-items: start;
     width: 100%;
-    padding: 0 2rem;
+    padding: 0 1.5rem;
   }
 
   .experience-rail-full {
