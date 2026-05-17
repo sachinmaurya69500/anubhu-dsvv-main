@@ -18,6 +18,9 @@
     <script src="/static/app.js?v=7"></script>
   </head>
   <body>
+    {% block top_strip %}{% endblock %}
+
+    {% block language_strip %}
     <div class="language-strip" aria-label="Language switch" data-no-auto-translate="true">
       <div class="language-switch">
         <button id="lang-en" type="button" class="lang-option" onclick="setAppLanguage('en')">English</button>
@@ -25,6 +28,7 @@
         <button id="lang-hi" type="button" class="lang-option" onclick="setAppLanguage('hi')">हिंदी</button>
       </div>
     </div>
+    {% endblock %}
 
     <header class="site-header">
       <div class="brand-block">

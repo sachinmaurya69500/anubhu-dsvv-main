@@ -2,25 +2,90 @@
 
 {% block title %}Home - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
 
+{% block top_strip %}
+<div class="barc-utility-strip" aria-label="Quick access links">
+  <a href="#main-content" class="barc-utility-link">Skip to main content</a>
+  <div class="barc-utility-right" aria-label="Top controls">
+    <div class="barc-accessibility-tools" aria-label="Accessibility controls">
+      <button type="button" class="barc-tool" onclick="adjustHomeFontSize('inc')">A+</button>
+      <button type="button" class="barc-tool" onclick="adjustHomeFontSize('reset')">A</button>
+      <button type="button" class="barc-tool" onclick="adjustHomeFontSize('dec')">A-</button>
+    </div>
+    <div class="language-switch barc-utility-language" aria-label="Language switch" data-no-auto-translate="true">
+      <button id="lang-en" type="button" class="lang-option" onclick="setAppLanguage('en')">English</button>
+      <span class="lang-separator">|</span>
+      <button id="lang-hi" type="button" class="lang-option" onclick="setAppLanguage('hi')">हिंदी</button>
+    </div>
+  </div>
+</div>
+<script>
+      // Server-provided bootstrap payload (if available) so the page can render immediately
+      {% if bootstrap_json %}
+      window.__BOOTSTRAP__ = {{ bootstrap_json|safe }};
+      {% else %}
+      window.__BOOTSTRAP__ = null;
+      {% endif %}
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      const b = window.__BOOTSTRAP__;
+      if (b) {
+        const candidate = b.featuredSubmission || b.latestApprovedWithPhoto || (Array.isArray(b.submissions) && b.submissions.find(s => s && ((s.gallery && s.gallery.length) || s.photo || s.thumbnail || s.avatarUrl)));
+        if (candidate) {
+          const url = candidate.photo || candidate.thumbnail || (candidate.gallery && candidate.gallery[0]) || candidate.avatarUrl || '';
+          if (url) {
+            const hero = document.querySelector('.barc-hero');
+            if (hero) {
+              const resolved = (/^(https?:)?\/\//.test(url) || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/api/uploads/') || url.startsWith('/static/')) ? url : `/api/uploads/avatars/${encodeURIComponent(url)}`;
+              hero.style.setProperty('--barc-hero-bg-b', `url("${resolved}")`);
+              hero.classList.add('bg-b-visible');
+            }
+          }
+        }
+      }
+    } catch (e) { console.warn('init hero bg from bootstrap failed', e); }
+  });
+
+  (function () {
+    const FONT_SCALE_KEY = 'home-font-scale';
+    const MIN_SCALE = 90;
+    const MAX_SCALE = 120;
+    const STEP = 5;
+    const DEFAULT_SCALE = 100;
+
+    function applyScale(scale) {
+      document.documentElement.style.fontSize = `${scale}%`;
+      localStorage.setItem(FONT_SCALE_KEY, String(scale));
+    }
+
+    window.adjustHomeFontSize = function (action) {
+      let current = Number.parseInt(localStorage.getItem(FONT_SCALE_KEY) || String(DEFAULT_SCALE), 10);
+      if (Number.isNaN(current)) current = DEFAULT_SCALE;
+
+      if (action === 'inc') current = Math.min(MAX_SCALE, current + STEP);
+      if (action === 'dec') current = Math.max(MIN_SCALE, current - STEP);
+      if (action === 'reset') current = DEFAULT_SCALE;
+
+      applyScale(current);
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const saved = Number.parseInt(localStorage.getItem(FONT_SCALE_KEY) || String(DEFAULT_SCALE), 10);
+      if (!Number.isNaN(saved)) applyScale(saved);
+    });
+  })();
+</script>
+{% endblock %}
+
+{% block language_strip %}{% endblock %}
+
 {% block content %}
 
 <section class="barc-home">
-  <div class="barc-utility-strip" aria-label="Quick access links">
-    <a href="#main-content" class="barc-utility-link">Skip to main content</a>
-    <div class="barc-accessibility-tools" aria-label="Accessibility controls">
-      <button type="button" class="barc-tool">A+</button>
-      <button type="button" class="barc-tool">A</button>
-      <button type="button" class="barc-tool">A-</button>
-    </div>
-    <a href="/gallery" class="barc-utility-link" data-i18n="homeExploreGallery">Gallery</a>
-    <a href="/forms" class="barc-utility-link" data-i18n="homeShareStory">Share Story</a>
-  </div>
-
-  <section class="barc-hero" id="main-content">
+  <section class="barc-hero bg-b-visible" id="main-content" style="--barc-hero-bg-b: url('{{ bootstrap_initial_bg or '/assets/Dev_Sanskriti_Vishwavidyalaya.png' }}'); --hero-rotation-ms: 5000; --hero-crossfade-ms: 1200;">
     <div class="barc-hero-copy">
-      <p class="barc-hero-kicker" data-i18n="homeInstitutionKicker">Institutional Learning Portal</p>
+      <p class="barc-hero-kicker" data-i18n="homeInstitutionKicker">Student Internship & Fieldwork Portal</p>
       <h2 data-i18n="homeInstitutionTitle">Anubhuti at Dev Sanskriti Vishwavidyalaya</h2>
-      <p class="barc-hero-lead" data-i18n="homeInstitutionLead">Browse approved student experiences, archive volumes, and institutional updates in a formal presentation built around the Anubhuti portal.</p>
+      <p class="barc-hero-lead" data-i18n="homeInstitutionLead">Explore student experiences and archives.</p>
       <div class="barc-hero-actions">
         <a href="#featured-experience-showcase" class="button primary" data-i18n="homeViewExperiences">View Experiences</a>
         <a href="#featured-experience-showcase" class="button secondary" data-i18n="homeExploreUpdates">Explore Updates</a>
@@ -30,8 +95,8 @@
   </section>
 
   <section class="barc-announcement-strip" aria-label="Announcements">
-    <span class="barc-announcement-label" data-i18n="homeAnnouncementsLabel">Announcements</span>
-      <div class="barc-announcement-marquee" data-i18n="homeAnnouncementText">Featured stories, archive volumes, and recent student experiences are highlighted below.</div>
+    <span class="barc-announcement-label" data-i18n="homeAnnouncementsLabel">Best <span class="barc-announcement-icon" aria-hidden="true">📝</span></span>
+    <div class="barc-announcement-marquee" data-i18n="homeAnnouncementText">Active submission forms are open now for social internship experience sharing. Submit your Internship Report, Fieldwork Learning Journal, or Community Outreach Story through the current Anubhuti submission forms.</div>
   </section>
 
 <!-- Featured experience section: two-column layout (featured experience + archives) -->
@@ -52,13 +117,31 @@
 <section class="content-section featured-experience-showcase" id="featured-experience-showcase">
     <div class="featured-experience-wrapper">
       <!-- Left: Featured Experience -->
-      <div class="featured-exp-left">
+      <div class="featured-exp-left" id="home-featured-experience">
         <h2 class="featured-exp-title" data-i18n="homeAchievementsTitle">Achievements & Experiences of Our Students</h2>
         <div class="featured-exp-image-box" id="featured-exp-image-box">
-          <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Featured experience photo" id="featured-exp-main-img" />
+          {% if featured_submission %}
+            <div class="featured-exp-image-wrapper">
+              <img src="{{ featured_submission_url }}" alt="Featured experience photo" id="featured-exp-main-img" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />
+              <div class="featured-exp-image-label">
+                <div class="featured-exp-image-name">{{ featured_submission.studentName }}</div>
+                <div class="featured-exp-image-location">{{ featured_submission.organization or featured_submission.programme or '' }}</div>
+              </div>
+            </div>
+          {% else %}
+            <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Featured experience photo" id="featured-exp-main-img" />
+          {% endif %}
         </div>
         <div class="featured-exp-content">
-          <p id="featured-exp-description">Loading experience...</p>
+          {% if featured_submission %}
+            {% set preview = (featured_submission.summary[:420] ~ '...') if (featured_submission.summary and featured_submission.summary|length > 420) else (featured_submission.summary or '') %}
+            <p id="featured-exp-description">{{ preview }}</p>
+            <div class="featured-exp-actions">
+              <button class="button primary" type="button" onclick="openHomeExperienceModal('{{ featured_submission.id }}')">Read full story</button>
+            </div>
+          {% else %}
+            <p id="featured-exp-description">Loading experience...</p>
+          {% endif %}
         </div>
         <div class="featured-exp-dots" id="featured-exp-dots"></div>
       </div>
@@ -67,9 +150,27 @@
       <div class="featured-exp-right">
         <h3 class="featured-exp-right-title" data-i18n="homeArchivesTitle">Updates</h3>
         <div class="featured-archives-box" id="featured-archives-box">
-          <div class="loading-state">
-            <p>Loading archives...</p>
-          </div>
+          {% if volumes and volumes|length %}
+            <div class="archive-items-wrapper">
+              {% for volume in volumes[:3] %}
+                <div class="archive-item">
+                  <span class="archive-item-badge">
+                    <span class="date-day">{{ (volume.publishedAt[:2] if volume.publishedAt else '01') }}</span>
+                    <span class="date-month">{{ (volume.publishedAt[5:7] if volume.publishedAt else 'Jan') }}</span>
+                    <span class="date-year">{{ volume.year }}</span>
+                  </span>
+                  <div class="archive-item-title">
+                    <a href="/archive?vol={{ volume.id|urlencode }}" class="archive-link">{{ volume.volumeLabel }}</a>
+                    <div class="archive-item-desc">{{ volume['items'] }} submissions · {{ volume.description }}</div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="loading-state">
+              <p>Loading archives...</p>
+            </div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -94,6 +195,9 @@
   </div>
 </section>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
   let currentSlide = 0;
   let isAuthenticated = false;
@@ -101,6 +205,9 @@
   let _submissionsMap = {}; // Store submissions by ID for modal gallery lookup
   let homeExperiences = [];
   let homeFeaturedExperience = null;
+  let featuredExperiences = [];
+  let featuredExpIndex = 0;
+  let _featuredRotationTimer = null;
   let featuredGalleryPhotos = [];
   let featuredGalleryIndex = 0;
   let featuredGalleryTimer = null;
@@ -115,70 +222,97 @@
       .replaceAll("'", '&#39;'));
   window.escapeHtml = escapeHtml;
 
-  (async function() {
-    try {
-      const bootstrapRes = await fetch('/api/bootstrap', { credentials: 'include' });
-      const bootstrap = await bootstrapRes.json();
-      isAuthenticated = Boolean(bootstrap.role);
+  function updateStatistics(stats) {
+    setStatValue('stat-visitors', stats.totalVisitors ?? stats.siteVisitors ?? 0);
+  }
 
-      // Update Share button: if user is logged in, open forms directly
-      try {
-        const shareBtn = document.getElementById('share-story-btn');
-        if (shareBtn) {
-          shareBtn.href = isAuthenticated ? '/forms' : '/auth?next=/forms';
-        }
-      } catch (e) {
-        console.warn('Share button update failed', e);
-      }
-
-      updateStatistics(bootstrap.stats || {});
-
-      let submissions = Array.isArray(bootstrap.submissions) ? bootstrap.submissions : [];
-
-      if (!submissions || submissions.length === 0) {
-        submissions = [];
-      }
-
-      submissions = submissions.map((submission, index) => normalizeSubmission(submission, index));
-      
-      // Build submissions map for gallery lookup in modals
-      _submissionsMap = {};
-      submissions.forEach(sub => {
-        _submissionsMap[sub.id] = sub;
-      });
-      
-      window._submissionsMap = _submissionsMap;
-      featuredArchiveVolumes = buildArchiveVolumes(submissions).slice(0, 3);
-      renderFeaturedArchives(featuredArchiveVolumes);
-
-      // Load the new home experiences showcase (featured + rail)
-      await loadHomeExperiences(bootstrap);
-    } catch (err) {
-      console.error('Error loading testimonials:', err);
+  function setStatValue(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.textContent = Number(value || 0).toLocaleString('en-IN');
     }
-  })();
+  }
 
-  async function loadHomeExperiences(bootstrap) {
-    try {
-      const approved = Array.isArray(bootstrap.submissions) ? bootstrap.submissions.filter((item) => item && item.status === 'approved') : [];
-      homeFeaturedExperience = normalizeHomeExperience(bootstrap.featuredSubmission || bootstrap.latestApprovedWithPhoto || approved[0] || null);
-      const featuredId = homeFeaturedExperience ? String(homeFeaturedExperience.id) : '';
-      homeExperiences = approved
-        .map(normalizeHomeExperience)
-        .filter((item) => item && String(item.id) !== featuredId);
+  function normalizeSubmission(submission, index) {
+    const summary = String(submission.summary || '');
+    const summaryPreview = submission.summaryPreview || (summary.length > previewLength ? `${summary.slice(0, previewLength).trimEnd()}...` : summary);
 
-      // Populate featured experiences for the showcase
-      featuredExperiences = [homeFeaturedExperience, ...homeExperiences].filter(e => e);
-      if (featuredExperiences.length > 0) {
-        renderFeaturedExperienceBox();
+    return {
+      ...submission,
+      id: submission.id || submission._id || `testimonial-${index}`,
+      summaryPreview,
+      summary,
+    };
+  }
+
+  function buildArchiveVolumes(submissions) {
+    const groups = {};
+
+    (Array.isArray(submissions) ? submissions : []).forEach((submission) => {
+      const dateStr = submission.submittedAt || submission.createdAt || '';
+      const parsed = new Date(dateStr);
+      const year = Number.isNaN(parsed.getFullYear()) ? (submission.year || 'Unknown') : parsed.getFullYear();
+
+      if (!groups[year]) {
+        groups[year] = [];
       }
 
-      renderHomeFeaturedExperience();
-      renderHomeExperienceRail();
-      renderHomeExperienceDots();
-    } catch (err) {
-      console.error('Error loading home experience showcase:', err);
+      groups[year].push(submission);
+    });
+
+    return Object.keys(groups)
+      .map((year) => {
+        const items = groups[year];
+        const latest = items.reduce((acc, current) => {
+          const date = new Date(current.submittedAt || current.createdAt || 0);
+          return !acc || date > acc ? date : acc;
+        }, null);
+
+        return {
+          id: `vol-${year}`,
+          volumeLabel: `Volume ${year}`,
+          year,
+          publishedAt: latest ? latest.toISOString() : '',
+          description: `Published collection of ${items.length} approved experiences from ${year}.`,
+          items: items.length,
+        };
+      })
+      .sort((a, b) => Number(b.year) - Number(a.year));
+  }
+
+  function renderFeaturedArchives(volumes) {
+    const container = document.getElementById('featured-archives-box');
+    if (!container) return;
+
+    if (!Array.isArray(volumes) || !volumes.length) {
+      container.innerHTML = `<div class="archive-items-wrapper"><p style="margin: 0; padding: 14px; color: var(--muted);">No archives yet.</p></div>`;
+      return;
     }
+
+    const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    container.innerHTML = `<div class="archive-items-wrapper">${volumes.map((volume, index) => {
+      const fallbackDate = new Date(Number(volume.year) || new Date().getFullYear(), index % 12, Math.min(28, (index + 1) * 3));
+      const parsedDate = volume.publishedAt ? new Date(volume.publishedAt) : fallbackDate;
+      const date = Number.isNaN(parsedDate.getTime()) ? fallbackDate : parsedDate;
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = monthShort[date.getMonth()] || 'Jan';
+      const year = String(date.getFullYear());
+
+      return `
+      <div class="archive-item">
+        <span class="archive-item-badge">
+          <span class="date-day">${day}</span>
+          <span class="date-month">${month}</span>
+          <span class="date-year">${year}</span>
+        </span>
+        <div class="archive-item-title">
+          <a href="/archive?vol=${encodeURIComponent(volume.id)}" class="archive-link">${escapeHtml(volume.volumeLabel)}</a>
+          <div class="archive-item-desc">${volume['items']} submissions · ${escapeHtml(volume.description || '')}</div>
+        </div>
+      </div>
+    `;
+    }).join('')}</div>`;
   }
 
   function normalizeHomeExperience(item) {
@@ -329,7 +463,7 @@
   }
 
   function getHomeExperienceImageSrc(item) {
-      const src = (item.gallery && item.gallery[0]) || item.avatarUrl || '';
+    const src = (item.gallery && item.gallery[0]) || item.avatarUrl || '';
     if (!src) return '/assets/Dev_Sanskriti_Vishwavidyalaya.png';
     if (/^(https?:)?\/\//.test(src) || src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('/api/uploads/avatars/') || src.startsWith('/static/')) {
       return src;
@@ -343,6 +477,78 @@
 
   function renderHomeCardMedia(src, altText) {
     return `<img src="${escapeHtml(src)}" alt="${escapeHtml(altText || 'Experience photo')}" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />`;
+  }
+
+  // ====== Initialization IIFE ======
+  (async function() {
+    try {
+      // Use server-provided bootstrap if available to avoid an extra round-trip
+      const bootstrap = (window.__BOOTSTRAP__ && typeof window.__BOOTSTRAP__ === 'object') ? window.__BOOTSTRAP__ : null;
+      let bootstrapData = bootstrap;
+      if (!bootstrapData) {
+        const bootstrapRes = await fetch('/api/bootstrap', { credentials: 'include' });
+        bootstrapData = await bootstrapRes.json();
+      }
+      isAuthenticated = Boolean(bootstrap.role);
+
+      // Update Share button: if user is logged in, open forms directly
+      try {
+        const shareBtn = document.getElementById('share-story-btn');
+        if (shareBtn) {
+          shareBtn.href = isAuthenticated ? '/forms' : '/auth?next=/forms';
+        }
+      } catch (e) {
+        console.warn('Share button update failed', e);
+      }
+
+      updateStatistics(bootstrapData.stats || {});
+
+      let submissions = Array.isArray(bootstrapData.submissions) ? bootstrapData.submissions : [];
+
+      if (!submissions || submissions.length === 0) {
+        submissions = [];
+      }
+
+      submissions = submissions.map((submission, index) => normalizeSubmission(submission, index));
+      
+      // Build submissions map for gallery lookup in modals
+      _submissionsMap = {};
+      submissions.forEach(sub => {
+        _submissionsMap[sub.id] = sub;
+      });
+      
+      window._submissionsMap = _submissionsMap;
+      featuredArchiveVolumes = buildArchiveVolumes(submissions).slice(0, 3);
+      renderFeaturedArchives(featuredArchiveVolumes);
+
+      // Load the new home experiences showcase (featured + rail)
+      await loadHomeExperiences(bootstrapData);
+    } catch (err) {
+      console.error('Error loading testimonials:', err);
+    }
+  })();
+
+  async function loadHomeExperiences(bootstrap) {
+    try {
+      const approved = Array.isArray(bootstrap.submissions) ? bootstrap.submissions.filter((item) => item && item.status === 'approved') : [];
+      homeFeaturedExperience = normalizeHomeExperience(bootstrap.featuredSubmission || bootstrap.latestApprovedWithPhoto || approved[0] || null);
+      const featuredId = homeFeaturedExperience ? String(homeFeaturedExperience.id) : '';
+      homeExperiences = approved
+        .map(normalizeHomeExperience)
+        .filter((item) => item && String(item.id) !== featuredId);
+
+      // Populate featured experiences for the showcase
+      featuredExperiences = [homeFeaturedExperience, ...homeExperiences].filter(e => e);
+      if (featuredExperiences.length > 0) {
+        renderFeaturedExperienceBox();
+      }
+
+      renderHomeFeaturedExperience();
+      renderHomeExperienceRail();
+      renderHomeExperienceDots();
+    } catch (err) {
+      console.error('Error loading home experience showcase:', err);
+    }
   }
 
   function updateStatistics(stats) {
@@ -402,9 +608,6 @@
       })
       .sort((a, b) => Number(b.year) - Number(a.year));
   }
-
-  let featuredExpIndex = 0;
-  let featuredExperiences = [];
 
   function renderFeaturedArchives(volumes) {
     const container = document.getElementById('featured-archives-box');
@@ -728,6 +931,96 @@
       updateModalGalleryButtons(submissionId, galleryCount);
     }
   }
+
+  // Ensure archives populate even if other scoped scripts didn't run as expected
+  async function populateArchivesFallback() {
+    try {
+      const container = document.getElementById('featured-archives-box');
+      if (!container) return;
+      // prefer server-injected bootstrap when available
+      let data = (window.__BOOTSTRAP__ && typeof window.__BOOTSTRAP__ === 'object') ? window.__BOOTSTRAP__ : null;
+      if (!data) {
+        const res = await fetch('/api/bootstrap', { credentials: 'include' });
+        data = await res.json();
+      }
+
+      const volumes = Array.isArray(data.volumes) && data.volumes.length ? data.volumes.slice(0, 3) : null;
+      if (volumes && volumes.length) {
+        container.innerHTML = volumes.map(v => {
+          const label = v.volumeLabel || `Volume ${v.year || ''}`;
+          const desc = v.description || '';
+          const items = v.items || 0;
+          const year = v.year || '';
+          // try to parse publishedAt for a readable date; fallback to year
+          let day = '01', month = 'Jan', yearText = year;
+          if (v.publishedAt && typeof v.publishedAt === 'string' && v.publishedAt.length >= 10) {
+            try {
+              const d = new Date(v.publishedAt);
+              day = String(d.getDate()).padStart(2,'0');
+              month = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()] || 'Jan';
+              yearText = String(d.getFullYear());
+            } catch(e){}
+          }
+          return `
+            <div class="archive-item">
+              <span class="archive-item-badge">
+                <span class="date-day">${day}</span>
+                <span class="date-month">${month}</span>
+                <span class="date-year">${yearText}</span>
+              </span>
+              <div class="archive-item-title">
+                <a href="/archive?vol=${encodeURIComponent(v.id || '')}" class="archive-link">${escapeHtml(label)}</a>
+                <div class="archive-item-desc">${items} submissions · ${escapeHtml(desc)}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        return;
+      }
+
+      // fallback: build volumes from submissions
+      const submissions = Array.isArray(data.submissions) ? data.submissions : [];
+      if (!submissions.length) {
+        container.innerHTML = `<div class="archive-items-wrapper"><p style="margin: 0; padding: 14px; color: var(--muted);">No archives yet.</p></div>`;
+        return;
+      }
+
+      const groups = {};
+      submissions.forEach(s => {
+        const dateStr = s.submittedAt || s.createdAt || '';
+        let year = 'Unknown';
+        if (typeof dateStr === 'string' && dateStr.length >= 4 && /^\d{4}/.test(dateStr)) year = dateStr.slice(0,4);
+        else if (s.year) year = String(s.year);
+        if (!groups[year]) groups[year] = [];
+        groups[year].push(s);
+      });
+
+      const built = Object.keys(groups).map(yr => ({ year: yr, volumeLabel: `Volume ${yr}`, items: groups[yr].length, publishedAt: (groups[yr][0] && (groups[yr][0].submittedAt || groups[yr][0].createdAt)) || '' })).sort((a,b) => Number(b.year || 0) - Number(a.year || 0)).slice(0,3);
+      if (!built.length) {
+        container.innerHTML = `<div class="archive-items-wrapper"><p style="margin: 0; padding: 14px; color: var(--muted);">No archives yet.</p></div>`;
+        return;
+      }
+
+      container.innerHTML = built.map(v => `
+        <div class="archive-item">
+          <span class="archive-item-badge">
+            <span class="date-day">01</span>
+            <span class="date-month">Jan</span>
+            <span class="date-year">${escapeHtml(v.year)}</span>
+          </span>
+          <div class="archive-item-title">
+            <a href="/archive?vol=${encodeURIComponent(v.year)}" class="archive-link">${escapeHtml(v.volumeLabel)}</a>
+            <div class="archive-item-desc">${v.items} submissions · </div>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      console.warn('populateArchivesFallback failed', e);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', populateArchivesFallback);
+  if (document.readyState !== 'loading') populateArchivesFallback();
 
   function getGalleryState(submissionId) {
     window._galleryState = window._galleryState || {};
@@ -1086,9 +1379,14 @@
 <script>
   (async function loadFeaturedGallery(){
     try{
-      const res = await fetch('/api/bootstrap', { credentials: 'include' });
-      const bootstrap = await res.json();
-      const submissions = Array.isArray(bootstrap.submissions) ? bootstrap.submissions : [];
+      // Prefer server-provided bootstrap payload when available
+      const bootstrap = (window.__BOOTSTRAP__ && typeof window.__BOOTSTRAP__ === 'object') ? window.__BOOTSTRAP__ : null;
+      let bootstrapData = bootstrap;
+      if (!bootstrapData) {
+        const res = await fetch('/api/bootstrap', { credentials: 'include' });
+        bootstrapData = await res.json();
+      }
+      const submissions = Array.isArray(bootstrapData.submissions) ? bootstrapData.submissions : [];
 
       const photos = [];
       // collect only the latest available photo for the featured strip
@@ -1102,8 +1400,22 @@
 
       if (photos.length === 0) return;
 
-      featuredGalleryPhotos = photos.map((photo) => ({ src: getPhotoSrc(photo.src), title: photo.title }));
+      window.featuredGalleryPhotos = photos.map((photo) => ({ src: getPhotoSrc(photo.src), title: photo.title }));
       const heroSection = document.querySelector('.barc-hero');
+      // Read rotation and crossfade settings from hero CSS vars (inline or defaults)
+      let rotationMs = 6000;
+      let crossfadeMs = 1000;
+      if (heroSection) {
+        try {
+          const cs = getComputedStyle(heroSection);
+          const r = parseInt((cs.getPropertyValue('--hero-rotation-ms') || '').trim(), 10);
+          const c = parseInt((cs.getPropertyValue('--hero-crossfade-ms') || '').trim(), 10);
+          if (!Number.isNaN(r) && r > 0) rotationMs = r;
+          if (!Number.isNaN(c) && c >= 0) crossfadeMs = c;
+          // Apply crossfade duration to CSS var used by transitions
+          heroSection.style.setProperty('--hero-crossfade-duration', `${crossfadeMs}ms`);
+        } catch (e) { /* ignore and use defaults */ }
+      }
       const dotsWrap = document.getElementById('featured-gallery-dots');
       const dotButtons = [];
 
@@ -1122,33 +1434,50 @@
         });
       }
 
+      // Use two CSS-backed layers and toggle visibility for a crossfade effect.
+      let heroBgToggle = false;
       function renderFeaturedPhoto() {
-        if (!featuredGalleryPhotos.length || !heroSection) return;
-        const current = featuredGalleryPhotos[featuredGalleryIndex];
-        heroSection.style.setProperty('--barc-hero-bg', `url("${current.src}")`);
+        const featuredGalleryPhotosLocal = window.featuredGalleryPhotos || [];
+        const featuredGalleryIndexLocal = (typeof window.featuredGalleryIndex === 'number') ? window.featuredGalleryIndex : 0;
+        if (!featuredGalleryPhotosLocal.length || !heroSection) return;
+        const current = featuredGalleryPhotosLocal[featuredGalleryIndexLocal];
+        if (!current || !current.src) return;
+        const url = `url("${current.src}")`;
+        if (heroBgToggle) {
+          heroSection.style.setProperty('--barc-hero-bg-a', url);
+          heroSection.classList.add('bg-a-visible');
+          heroSection.classList.remove('bg-b-visible');
+        } else {
+          heroSection.style.setProperty('--barc-hero-bg-b', url);
+          heroSection.classList.add('bg-b-visible');
+          heroSection.classList.remove('bg-a-visible');
+        }
+        heroBgToggle = !heroBgToggle;
         dotButtons.forEach((dot, index) => {
-          dot.classList.toggle('is-active', index === featuredGalleryIndex);
+          dot.classList.toggle('is-active', index === featuredGalleryIndexLocal);
         });
       }
 
       window.setFeaturedGallery = function(index) {
-        if (index >= 0 && index < featuredGalleryPhotos.length) {
-          featuredGalleryIndex = index;
+        const list = window.featuredGalleryPhotos || [];
+        if (index >= 0 && index < list.length) {
+          window.featuredGalleryIndex = index;
           renderFeaturedPhoto();
         }
       };
 
       window.stepFeaturedGallery = function(direction) {
-        if (!featuredGalleryPhotos.length) return;
-        featuredGalleryIndex = (featuredGalleryIndex + direction + featuredGalleryPhotos.length) % featuredGalleryPhotos.length;
+        const list = window.featuredGalleryPhotos || [];
+        if (!list.length) return;
+        window.featuredGalleryIndex = ((typeof window.featuredGalleryIndex === 'number' ? window.featuredGalleryIndex : 0) + direction + list.length) % list.length;
         renderFeaturedPhoto();
       };
 
       buildFeaturedDots();
 
-      if (featuredGalleryTimer) clearInterval(featuredGalleryTimer);
+      if (typeof featuredGalleryTimer !== 'undefined' && featuredGalleryTimer) clearInterval(featuredGalleryTimer);
       if (featuredGalleryPhotos.length > 1) {
-        featuredGalleryTimer = setInterval(() => window.stepFeaturedGallery(1), 6000);
+        window.featuredGalleryTimer = setInterval(() => window.stepFeaturedGallery(1), rotationMs);
       }
 
       renderFeaturedPhoto();
@@ -1195,22 +1524,23 @@
     .featured-gallery-main { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); aspect-ratio: 4 / 2.8; }
   }
 
-  /* Featured Experience Showcase - Cleaner, Less Bloated */
+  /* Featured Experience Showcase */
   .featured-experience-showcase {
     background: #fff;
     padding: 2rem 0;
     margin: 0;
-    width: 100%;
-    border-radius: 0;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
   }
 
   .featured-experience-wrapper {
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.9fr);
-    gap: 3rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
     align-items: start;
     width: 100%;
-    padding: 0 1.5rem;
+    padding: 0 2rem;
   }
 
   .experience-rail-full {
@@ -1265,6 +1595,39 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+
+  .featured-exp-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 2rem 1.5rem;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .featured-exp-person-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .featured-exp-person-name {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .featured-exp-person-location {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.9);
   }
 
   .featured-exp-image-label {
@@ -1911,6 +2274,34 @@
     .experience-card-details { max-width: 52%; font-size: 0.7rem; }
   }
 </style>
+<script>
+  (function(){
+    const container = document.getElementById('featured-archives-box');
+    if (!container) return;
+    if (!container.querySelector('.loading-state')) return;
+    (async ()=>{
+      try {
+        const res = await fetch('/api/bootstrap', { credentials: 'include' });
+        const data = await res.json();
+        const vols = Array.isArray(data.volumes) ? data.volumes.slice(0,3) : [];
+        if (!vols.length) return;
+        container.innerHTML = vols.map(v => `
+          <div class="archive-item">
+            <span class="archive-item-badge">
+              <span class="date-day">01</span>
+              <span class="date-month">Jan</span>
+              <span class="date-year">${v.year}</span>
+            </span>
+            <div class="archive-item-title">
+              <a href="/archive?vol=${encodeURIComponent(v.id)}" class="archive-link">${v.volumeLabel}</a>
+              <div class="archive-item-desc">${v.items} submissions · ${v.description}</div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) { console.warn('archive quick-fill failed', e); }
+    })();
+  })();
+</script>
 {% endblock %}
 
 

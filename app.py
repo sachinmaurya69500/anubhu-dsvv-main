@@ -6,6 +6,7 @@ import jwt
 import bcrypt
 from deep_translator import GoogleTranslator
 from flask import Flask, jsonify, request, send_file, send_from_directory, render_template, redirect
+import json
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
@@ -227,15 +228,26 @@ volumes = db['volumes']
 submissions = db['submissions']
 visitors = db['visitors']
 
+def _normalize_value_for_client(value):
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_normalize_value_for_client(item) for item in value]
+    if isinstance(value, dict):
+        return {k: _normalize_value_for_client(v) for k, v in value.items()}
+    return value
+
+
 def to_client(doc):
     """Convert MongoDB document to client format."""
     if not doc:
         return None
+    doc = dict(doc)
     doc['id'] = str(doc.pop('_id', ''))
-    # Convert all ObjectId fields to strings
-    for key in doc:
-        if isinstance(doc[key], ObjectId):
-            doc[key] = str(doc[key])
+    for key in list(doc.keys()):
+        doc[key] = _normalize_value_for_client(doc[key])
     return doc
 
 def seed_database():
@@ -456,7 +468,94 @@ def require_auth(f):
 @app.route('/')
 def serve_index():
     """Serve the public home page."""
-    return render_template('home.html')
+    try:
+        # Build the same bootstrap payload server-side so templates can render immediately
+        user = verify_auth() or verify_student_auth()
+        role = 'admin' if verify_auth() else 'student' if verify_student_auth() else None
+        forms_list = [to_client(f) for f in forms.find().sort('deadline', 1)]
+        volumes_list = [to_client(v) for v in volumes.find().sort('publishedAt', 1)]
+        submissions_list = [to_client(s) for s in submissions.find({'status': 'approved'}).sort('submittedAt', -1)]
+
+        # latest approved with photo logic (simplified mirror of /api/bootstrap)
+        latest_photo = None
+        try:
+            from urllib.parse import unquote
+            cursor = submissions.find({'status': 'approved'}).sort([('verifiedAt', -1), ('submittedAt', -1)])
+            for p in cursor:
+                url = p.get('avatarUrl') or p.get('photo') or p.get('thumbnail') or ''
+                if not url:
+                    continue
+                url = str(url)
+                if url.startswith('http') or url.startswith('data:') or url.startswith('blob:'):
+                    latest_photo = to_client(p)
+                    break
+                filename = url
+                if filename.startswith('/api/uploads/avatars/'):
+                    filename = filename.split('/api/uploads/avatars/')[-1]
+                filename = unquote(filename)
+                found = False
+                for uploads_dir in _avatar_storage_candidates():
+                    file_path = os.path.join(uploads_dir, secure_filename(filename))
+                    if os.path.exists(file_path):
+                        found = True
+                        break
+                if found:
+                    latest_photo = to_client(p)
+                    break
+        except Exception:
+            latest_photo_doc = submissions.find({'status': 'approved'}).sort([('verifiedAt', -1), ('submittedAt', -1)]).limit(1)
+            for p in latest_photo_doc:
+                latest_photo = to_client(p)
+
+        featured_doc = submissions.find_one({'isFeatured': True})
+        featured_submission = to_client(featured_doc) if featured_doc else None
+
+        approved_submissions_count = submissions.count_documents({'status': 'approved'})
+        organization_count = len(submissions.distinct('organization', {'status': 'approved'}))
+        student_count = students.count_documents({})
+        volume_count = volumes.count_documents({})
+
+        bootstrap = {
+            'user': user,
+            'role': role,
+            'forms': forms_list,
+            'volumes': volumes_list,
+            'submissions': submissions_list,
+            'latestApprovedWithPhoto': latest_photo,
+            'featuredSubmission': featured_submission,
+            'totalVisitors': visitors.count_documents({}),
+            'stats': {
+                'approvedSubmissions': approved_submissions_count,
+                'organizationsFeatured': organization_count,
+                'registeredStudents': student_count,
+                'archiveVolumes': volume_count,
+                'siteVisitors': len(visitors.distinct('visitorId')),
+            },
+        }
+        # Compute an initial hero image URL (one of the experience photos) for immediate paint
+        def resolve_image_url(candidate):
+            if not candidate:
+                return None
+            url = candidate.get('photo') or candidate.get('thumbnail') or (candidate.get('gallery') or [None])[0] or candidate.get('avatarUrl') or ''
+            url = str(url or '').strip()
+            if not url:
+                return None
+            if url.startswith('http') or url.startswith('data:') or url.startswith('blob:') or url.startswith('/api/uploads/') or url.startswith('/static/'):
+                return url
+            from urllib.parse import quote
+            return f"/api/uploads/avatars/{quote(url)}"
+
+        initial_candidate = bootstrap.get('featuredSubmission') or bootstrap.get('latestApprovedWithPhoto') or (bootstrap.get('submissions') or [None])[0]
+        bootstrap_initial_bg = resolve_image_url(initial_candidate) or '/assets/Dev_Sanskriti_Vishwavidyalaya.png'
+
+        # Resolve a featured submission image URL for immediate server-side render
+        featured_submission = bootstrap.get('featuredSubmission')
+        featured_submission_url = resolve_image_url(featured_submission) or bootstrap_initial_bg
+
+        return render_template('home.html', bootstrap_json=json.dumps(bootstrap), bootstrap_initial_bg=bootstrap_initial_bg, volumes=volumes_list, featured_submission=featured_submission, featured_submission_url=featured_submission_url)
+    except Exception as e:
+        # Fall back to rendering without server-provided bootstrap
+        return render_template('home.html')
 
 @app.route('/admin/verify')
 def serve_admin_verify():

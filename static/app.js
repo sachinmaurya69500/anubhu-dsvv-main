@@ -49,7 +49,7 @@ const TRANSLATIONS = {
     homeAchievementsTitle: 'Achievements & Experiences of Our Students',
     homeArchivesTitle: 'Our Archives',
     homeVisitorsLabel: 'Total visits :',
-    homeInstitutionKicker: 'Institutional Learning Portal',
+    homeInstitutionKicker: 'Student Internship & Fieldwork Portal',
     homeInstitutionTitle: 'Anubhuti at Dev Sanskriti Vishwavidyalaya',
     homeInstitutionLead: 'Explore student experiences, archives, and institutional updates through a formal, government-style presentation inspired by national research portals.',
     homeExploreUpdates: 'Explore Updates',
@@ -114,7 +114,7 @@ const TRANSLATIONS = {
     homeAchievementsTitle: 'हमारे विद्यार्थियों की उपलब्धियाँ और अनुभव',
     homeArchivesTitle: 'हमारे आर्काइव',
     homeVisitorsLabel: 'कुल विज़िट्स :',
-    homeInstitutionKicker: 'संस्थागत शिक्षण पोर्टल',
+    homeInstitutionKicker: 'छात्र इंटर्नशिप और फील्डवर्क पोर्टल',
     homeInstitutionTitle: 'देव संस्कृति विश्वविद्यालय में अनुभूति',
     homeInstitutionLead: 'राष्ट्रीय शोध पोर्टलों से प्रेरित औपचारिक, सरकारी-शैली की प्रस्तुति के माध्यम से छात्र अनुभव, आर्काइव और संस्थागत अपडेट देखें।',
     homeExploreUpdates: 'अपडेट देखें',
@@ -148,23 +148,30 @@ const TRANSLATIONS = {
 
 function getSiteLanguage() {
   try {
-    homeInstitutionKicker: 'Institutional Learning Portal',
-    homeInstitutionTitle: 'Anubhuti at Dev Sanskriti Vishwavidyalaya',
-    homeInstitutionLead: 'Browse approved student experiences, archive volumes, and institutional updates in a formal presentation built around the Anubhuti portal.',
+    const stored = localStorage.getItem(LANGUAGE_KEY);
+    if (stored === 'hi' || stored === 'en') {
+      return stored;
     }
   } catch (err) {
+    // Ignore localStorage errors
+  }
   return DEFAULT_LANGUAGE;
-    homeAnnouncementText: 'Approved experiences, archive volumes, and current updates are highlighted below.',
+}
 
 function setSiteLanguage(language) {
-  try {
-    homeInstitutionKicker: 'संस्थागत शिक्षण पोर्टल',
-    homeInstitutionTitle: 'देव संस्कृति विश्वविद्यालय में अनुभूति',
-    homeInstitutionLead: 'अनुभूति पोर्टल के लिए तैयार औपचारिक प्रस्तुति में स्वीकृत छात्र अनुभव, आर्काइव वॉल्यूम और संस्थागत अपडेट देखें।',
+  if (language !== 'hi' && language !== 'en') {
+    return DEFAULT_LANGUAGE;
   }
+  try {
+    localStorage.setItem(LANGUAGE_KEY, language);
+  } catch (err) {
+    // Ignore localStorage errors
+  }
+  return language;
 }
-  const language = getSiteLanguage();
-    homeAnnouncementText: 'स्वीकृत अनुभव, आर्काइव वॉल्यूम और वर्तमान अपडेट नीचे दर्शाए गए हैं।',
+
+function t(key, fallback = '') {
+  const dictionary = TRANSLATIONS[getSiteLanguage()] || TRANSLATIONS[DEFAULT_LANGUAGE];
   return dictionary[key] || fallback || key;
 }
 

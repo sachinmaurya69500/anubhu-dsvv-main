@@ -190,8 +190,6 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: 'Noto Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-  color: var(--ink);
-  background: var(--bg);
   background-attachment: fixed;
   display: flex;
   flex-direction: column;
@@ -3321,15 +3319,19 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Achievements & Experiences showcase (left) + Archives (right) */
 .featured-experience-showcase {
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   padding: 2.25rem 1rem;
   background: transparent;
+  max-width: 100%;
 }
 .featured-experience-wrapper {
-  max-width:max-content;
-  margin-left:auto;
-  margin-right: auto;
+  width: 100%;
+  max-width: 1250px;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.75fr);
   gap: 1.75rem;
   align-items: start;
 }
@@ -3360,22 +3362,21 @@ h1, h2, h3, h4, h5, h6 {
 .featured-exp-dot { width:10px; height:10px; border-radius:50%; background:var(--line); cursor:pointer; }
 .featured-exp-dot.active { background:var(--brand); box-shadow: 0 4px 12px rgba(0,61,153,0.18); }
 
-.featured-exp-right { position: relative; }
-.featured-exp-right-title { margin:0 0 12px; color: var(--brand-dark); font-size:1.05rem; }
-.featured-archives-box { background: var(--surface); padding: 1rem; border-radius: 12px; box-shadow: var(--shadow-sm); }
-.archive-items-wrapper { display:flex; flex-direction:column; gap:12px; }
-.archive-item { display:flex; flex-direction:row; align-items:center; gap:14px; padding:12px; border-radius:10px; background: var(--surface); border:1px solid var(--line); box-shadow: var(--shadow-sm); }
-.archive-item-title { display:flex; flex-direction:column; justify-content:flex-start; gap:6px; }
-.archive-link { color: var(--brand); font-weight:700; text-decoration:none; font-size:1rem; }
-.archive-item-badge { background: var(--accent); color: #000; width:78px; height:78px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; font-weight:800; font-size:0.95rem; }
-.archive-item-desc { color: var(--muted); font-size:0.95rem; }
-
-/* Make the archives box appear as a strong white container spanning the section */
-.featured-archives-box { background: #fff; padding: 14px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,61,153,0.06); border: 1px solid rgba(0,0,0,0.04); }
+.featured-exp-right { position: relative; background: var(--surface); padding: 1.5rem; border-radius: 12px; box-shadow: var(--shadow-md); }
+.featured-exp-right-title { margin:0 0 16px; color: var(--brand); font-size:1.2rem; font-weight:700; padding-bottom:12px; border-bottom:3px solid var(--accent); letter-spacing:-0.5px; }
+.featured-archives-box { background: transparent; padding: 0; border-radius: 0; box-shadow: none; border: none; }
+.archive-items-wrapper { display:flex; flex-direction:column; gap:14px; }
+.archive-item { display:flex; flex-direction:row; align-items:center; gap:12px; padding:14px; border-radius:10px; background: #fff; border:1px solid var(--line); box-shadow: var(--shadow-sm); transition:all 0.3s ease; }
+.archive-item:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--brand-soft); }
+.archive-item-title { display:flex; flex-direction:column; justify-content:flex-start; gap:6px; flex:1; }
+.archive-link { color: var(--brand); font-weight:700; text-decoration:none; font-size:0.95rem; transition:color 0.3s ease; }
+.archive-link:hover { color: var(--brand-dark); text-decoration:underline; }
+.archive-item-badge { background: linear-gradient(135deg, var(--accent) 0%, #ffd700 100%); color: #000; width:70px; height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; font-weight:800; font-size:0.9rem; flex-shrink:0; box-shadow:0 4px 12px rgba(255,215,0,0.2); }
+.archive-item-desc { color: var(--muted); font-size:0.85rem; line-height:1.4; }
 
 /* Stylize the date tile inside badge for clearer day/month/year split */
-.archive-item-badge .date-day { font-size: 1.6rem; line-height:1; }
-.archive-item-badge .date-month { font-size: 0.9rem; text-transform: uppercase; }
+.archive-item-badge .date-day { font-size: 1.5rem; line-height:1; font-weight:900; }
+.archive-item-badge .date-month { font-size: 0.85rem; text-transform: uppercase; font-weight:700; letter-spacing:0.05em; margin-top:2px; }
 .archive-item-badge .date-year { display:none; }
 
 @media (max-width: 980px) {
@@ -3413,36 +3414,64 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.65rem 1rem;
-  background: #0f5b73;
+  gap: 0.7rem;
+  padding: 0.4rem 0.75rem;
+  background: linear-gradient(135deg, #0c4e63, #13667b);
   color: #fff;
-  border-radius: 0.85rem;
-  box-shadow: var(--shadow-sm);
+  border-radius: 0;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
   flex-wrap: wrap;
 }
 
 .barc-utility-link {
   color: #fff;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 600;
 }
 
 .barc-accessibility-tools {
   display: inline-flex;
-  gap: 0.35rem;
+  gap: 0.25rem;
+}
+
+.barc-utility-right {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .barc-tool {
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  border-radius: 999px;
-  min-width: 2rem;
-  height: 2rem;
-  padding: 0 0.55rem;
+  border-radius: 0;
+  min-width: 1.8rem;
+  height: 1.8rem;
+  padding: 0 0.35rem;
   font-weight: 700;
+  font-size: 0.88rem;
+  line-height: 1.8rem;
+}
+
+.barc-utility-language {
+  margin-left: 0;
+  color: #fff;
+}
+
+.barc-utility-language .lang-option {
+  color: #fff;
+  border-radius: 0;
+}
+
+.barc-utility-language .lang-option.active {
+  color: #0f5b73;
+  background: #fff;
+}
+
+.barc-utility-language .lang-separator {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .barc-hero {
@@ -3451,9 +3480,9 @@ h1, h2, h3, h4, h5, h6 {
   gap: 1.5rem;
   align-items: stretch;
   padding: 2.2rem;
-  background:
-    linear-gradient(135deg, rgba(0, 24, 48, 0.80), rgba(0, 24, 48, 0.50)),
-    var(--barc-hero-bg, linear-gradient(135deg, #f5fbfd 0%, #ffffff 100%));
+  /* Gradient overlay stays on the hero container; images are rendered
+     by pseudo-elements so we can crossfade smoothly. */
+  background: linear-gradient(135deg, rgba(0, 24, 48, 0.80), rgba(0, 24, 48, 0.50));
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -3472,6 +3501,40 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
   z-index: 1;
 }
+
+/* Crossfade background layers for the hero section. */
+.barc-hero {
+  position: relative;
+  overflow: hidden;
+  /* Defaults — can be overridden via inline style on the hero element */
+  --hero-crossfade-duration: 1200ms;
+}
+.barc-hero::before,
+.barc-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: opacity var(--hero-crossfade-duration) ease-in-out, transform var(--hero-crossfade-duration) ease-in-out;
+  will-change: opacity, transform;
+  opacity: 0;
+  transform: scale(1.04);
+}
+/* Layer A (top) reads from --barc-hero-bg-a */
+.barc-hero::before { background-image: linear-gradient(135deg, rgba(0, 24, 48, 0.80), rgba(0, 24, 48, 0.50)), var(--barc-hero-bg-a); }
+/* Layer B (bottom) reads from --barc-hero-bg-b and acts as the fallback */
+.barc-hero::after { background-image: linear-gradient(135deg, rgba(0, 24, 48, 0.80), rgba(0, 24, 48, 0.50)), var(--barc-hero-bg-b, url('/assets/Dev_Sanskriti_Vishwavidyalaya.png')); opacity: 0; transform: scale(1); }
+
+/* Toggle visibility classes to crossfade between layers */
+.barc-hero.bg-a-visible::before { opacity: 1; transform: scale(1); }
+.barc-hero.bg-b-visible::after { opacity: 1; transform: scale(1); }
+
+/* Ensure hero content sits above the background layers */
+.barc-hero-copy { position: relative; z-index: 1; }
+
 
 .barc-hero-kicker {
   margin: 0;
@@ -3544,35 +3607,75 @@ h1, h2, h3, h4, h5, h6 {
 
 .barc-announcement-strip {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   align-items: center;
-  padding: 0.95rem 1.05rem;
-  background: #f9f1df;
-  border: 1px solid rgba(255, 215, 0, 0.38);
-  border-radius: 0.95rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f9f6ef 100%);
+  border: 1px solid rgba(0, 61, 153, 0.12);
+  border-radius: 1rem;
+  box-shadow: 0 8px 20px rgba(0, 31, 70, 0.05);
 }
 
 .barc-announcement-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   flex: 0 0 auto;
-  padding: 0.35rem 0.65rem;
+  padding: 0.45rem 0.85rem;
   background: var(--brand);
   color: #fff;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
+.barc-announcement-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: #fff;
+  color: var(--brand);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 61, 153, 0.12);
+  animation: barc-announcement-pulse 1.8s infinite ease-in-out;
+}
+
 .barc-announcement-marquee {
   color: var(--ink);
   font-weight: 600;
+  font-size: 0.98rem;
+  line-height: 1.65;
+  max-width: 100%;
+}
+
+.barc-announcement-strip::before {
+  content: '';
+  width: 4px;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--brand), var(--accent));
+  flex: 0 0 auto;
+}
+
+@keyframes barc-announcement-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.85; }
 }
 
 .barc-two-column-grid {
-  display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.75fr);
   gap: 1.25rem;
+  width: min(100%, 1250px);
+  max-width: 1250px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  align-items: start;
 }
 
 .barc-card {
@@ -3668,6 +3771,16 @@ h1, h2, h3, h4, h5, h6 {
   .barc-announcement-strip {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .barc-utility-right {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .barc-utility-language {
+    margin-left: 0;
   }
 
   .barc-hero {
