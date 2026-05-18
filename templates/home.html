@@ -73,6 +73,15 @@
       if (!Number.isNaN(saved)) applyScale(saved);
     });
   })();
+
+  // Resilient fallback: ensure archive scroller runs even if earlier scripts fail
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+      try {
+        if (typeof initializeArchiveScroller === 'function') initializeArchiveScroller();
+      } catch (e) { /* ignore */ }
+    }, 300);
+  });
 </script>
 {% endblock %}
 
@@ -95,8 +104,10 @@
   </section>
 
   <section class="barc-announcement-strip" aria-label="Announcements">
-    <span class="barc-announcement-label" data-i18n="homeAnnouncementsLabel">Best <span class="barc-announcement-icon" aria-hidden="true">📝</span></span>
-    <div class="barc-announcement-marquee" data-i18n="homeAnnouncementText">Active submission forms are open now for social internship experience sharing. Submit your Internship Report, Fieldwork Learning Journal, or Community Outreach Story through the current Anubhuti submission forms.</div>
+    <span class="barc-announcement-label"><span class="barc-announcement-icon" aria-hidden="true">🔊</span></span>
+    <div class="barc-announcement-content">
+      <section class="barc-announcement-nested" data-i18n="homeAnnouncementText">Active submission forms are open now for social internship experience sharing. Submit your Internship Report, Fieldwork Learning Journal, or Community Outreach Story through the current Anubhuti submission forms.</section>
+    </div>
   </section>
 
 <!-- Featured experience section: two-column layout (featured experience + archives) -->
@@ -270,14 +281,13 @@
     const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     const sorted = (Array.isArray(volumes) ? volumes.slice() : []).sort((a,b) => (Number(b.year)||0) - (Number(a.year)||0));
-    container.innerHTML = `<div class="archive-items-wrapper">${sorted.map((volume, index) => {
+    const itemsHtml = sorted.map((volume, index) => {
       const fallbackDate = new Date(Number(volume.year) || new Date().getFullYear(), index % 12, Math.min(28, (index + 1) * 3));
       const parsedDate = volume.publishedAt ? new Date(volume.publishedAt) : fallbackDate;
       const date = Number.isNaN(parsedDate.getTime()) ? fallbackDate : parsedDate;
       const day = String(date.getDate()).padStart(2, '0');
       const month = monthShort[date.getMonth()] || 'Jan';
       const year = String(date.getFullYear());
-
       return `
       <div class="archive-item">
         <span class="archive-item-badge">
@@ -291,7 +301,20 @@
         </div>
       </div>
     `;
-    }).join('')}</div>`;
+    }).join('');
+
+    // Create a track that contains two copies of the items (for seamless looping)
+    container.innerHTML = `
+      <div class="archive-items-viewport">
+        <div class="archive-items-track">
+          ${itemsHtml}
+          ${itemsHtml}
+        </div>
+      </div>
+    `;
+
+    // Initialize scrolling behavior for the archive track
+    initializeArchiveScroller();
   }
 
   function normalizeHomeExperience(item) {
@@ -309,6 +332,147 @@
       mentor: item.mentor || '',
       rollNumber: item.rollNumber || '',
     };
+  }
+
+  function initializeArchiveScroller() {
+    try {
+      const box = document.querySelector('.featured-archives-box');
+      if (!box) return;
+      // Locate or wrap server-rendered items into viewport/track
+      // Always rebuild the track from server-rendered items (deduplicated)
+      const rawItems = Array.from(box.querySelectorAll('.archive-item'));
+      if (!rawItems || !rawItems.length) return;
+      const seen = new Set();
+      const uniqueItems = [];
+      rawItems.forEach((el) => {
+        const link = el.querySelector('.archive-link');
+        const key = link ? (link.getAttribute('href') || link.textContent).trim() : el.textContent.trim();
+        if (!seen.has(key)) { seen.add(key); uniqueItems.push(el.outerHTML); }
+      });
+      const itemsHtml = uniqueItems.join('');
+      box.innerHTML = `
+        <div class="archive-items-viewport">
+          <div class="archive-items-track">
+            ${itemsHtml}
+          </div>
+        </div>
+      `;
+      const viewport = box.querySelector('.archive-items-viewport');
+      const track = box.querySelector('.archive-items-track');
+
+      const items = Array.from(track.querySelectorAll('.archive-item'));
+      const total = items.length;
+      if (total <= 1) return; // nothing to scroll
+
+      // Clear any previous animator
+      if (track._archiveAnimator && typeof track._archiveAnimator.stop === 'function') {
+        track._archiveAnimator.stop();
+      }
+
+      // Compute item height + gap
+      const first = track.querySelector('.archive-item');
+      const itemStyle = getComputedStyle(first);
+      const gap = parseFloat(getComputedStyle(track).rowGap) || parseFloat(itemStyle.marginBottom) || 14;
+      const itemHeight = Math.ceil(first.offsetHeight + gap);
+
+      // Animator: move up by one item with CSS transition, then append first to end and reset transform
+      const animator = {
+        running: false,
+        paused: false,
+        timerId: null,
+        stepDelay: Math.max(6500, total * 2400), // ms between steps
+        animMs: 5000,
+        start() {
+          this.running = true;
+          this.paused = false;
+          const runStep = () => {
+            if (!this.running || this.paused) return;
+            track.style.transition = `transform ${this.animMs}ms linear`;
+            track.style.transform = `translateY(-${itemHeight}px)`;
+            const onEnd = () => {
+              track.removeEventListener('transitionend', onEnd);
+              if (!this.running || this.paused) return;
+              track.style.transition = 'none';
+              // move first child to end
+              const firstChild = track.children[0];
+              if (firstChild) track.appendChild(firstChild);
+              // Position item far below so it's completely hidden
+              track.style.transform = `translateY(${itemHeight * 3}px)`;
+              // force reflow to apply position before animation
+              // eslint-disable-next-line no-unused-expressions
+              track.offsetHeight;
+              // Animate upward from bottom
+              track.style.transition = `transform ${this.animMs}ms linear`;
+              track.style.transform = `translateY(0)`;
+              const onReentry = () => {
+                track.removeEventListener('transitionend', onReentry);
+                if (!this.running || this.paused) return;
+                this.timerId = setTimeout(runStep, 50);
+              };
+              track.addEventListener('transitionend', onReentry);
+            };
+            track.addEventListener('transitionend', onEnd);
+          };
+          // kick off after short delay so page can settle
+          this.timerId = setTimeout(runStep, 500);
+        },
+        pause() {
+          this.paused = true;
+          if (this.timerId) {
+            clearTimeout(this.timerId);
+            this.timerId = null;
+          }
+        },
+        resume() {
+          if (!this.running) return;
+          if (!this.paused) return;
+          this.paused = false;
+          this.timerId = setTimeout(() => {
+            if (this.running && !this.paused) {
+              const firstChild = track.children[0];
+              if (!firstChild) return;
+              track.style.transition = `transform ${this.animMs}ms linear`;
+              track.style.transform = `translateY(-${itemHeight}px)`;
+              const onEnd = () => {
+                track.removeEventListener('transitionend', onEnd);
+                if (!this.running || this.paused) return;
+                track.style.transition = 'none';
+                const first = track.children[0];
+                if (first) track.appendChild(first);
+                // Position item far below so it's completely hidden
+                track.style.transform = `translateY(${itemHeight * 3}px)`;
+                // force reflow to apply position before animation
+                // eslint-disable-next-line no-unused-expressions
+                track.offsetHeight;
+                // Animate upward from bottom
+                track.style.transition = `transform ${this.animMs}ms linear`;
+                track.style.transform = `translateY(0)`;
+                const onReentry = () => {
+                  track.removeEventListener('transitionend', onReentry);
+                  if (!this.running || this.paused) return;
+                  this.timerId = setTimeout(() => this.resume(), 50);
+                };
+                track.addEventListener('transitionend', onReentry);
+              };
+              track.addEventListener('transitionend', onEnd);
+            }
+          }, 100);
+        },
+        stop() {
+          this.running = false;
+          this.paused = false;
+          if (this.timerId) clearTimeout(this.timerId);
+          try { track.style.transition = ''; track.style.transform = ''; } catch (e) {}
+        }
+      };
+
+      track._archiveAnimator = animator;
+      animator.start();
+
+      const hoverTarget = viewport || box;
+      hoverTarget.onmouseenter = () => { if (track._archiveAnimator) track._archiveAnimator.pause(); };
+      hoverTarget.onmouseleave = () => { if (track._archiveAnimator) track._archiveAnimator.resume(); };
+    } catch (e) { console.warn('Archive scroller init failed', e); }
   }
 
   function makeHomePreview(text, maxLength) {
@@ -629,6 +793,8 @@
 
       // Load the new home experiences showcase (featured + rail)
       await loadHomeExperiences(bootstrapData);
+      // Ensure archive scroller runs even if volumes were rendered server-side
+      try { initializeArchiveScroller(); } catch (e) { /* ignore */ }
     } catch (err) {
       console.error('Error loading testimonials:', err);
     }
@@ -647,13 +813,7 @@
       featuredExperiences = [homeFeaturedExperience, ...homeExperiences].filter(e => e);
       renderHomeFeaturedExperience();
       // Debug: expose counts so we can see if submissions loaded
-      try {
-        const debug = document.getElementById('home-experience-debug');
-        if (debug) {
-          debug.style.display = 'block';
-          debug.textContent = `Featured: ${homeFeaturedExperience ? 1 : 0} • Rail: ${homeExperiences.length}`;
-        }
-      } catch (e) { /* ignore */ }
+      // Debug info removed from UI
       // Setup rotation among featured experiences (if multiple)
       try {
         if (_homeFeaturedTimer) {
@@ -1688,7 +1848,7 @@
 
   .vision-media img { width: 100%; height: auto; display: block; border-radius: 8px; }
 
-  .vision-media { flex: 0 0 420px; }
+  .vision-media { flex: 0 0 210px; }
   .vision-content { flex: 1; }
   .vision-title { margin: 0 0 12px; color: var(--brand); font-size: 1.6rem; }
   .vision-text { margin: 0; color: var(--ink); line-height: 1.6; }
