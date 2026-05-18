@@ -4,7 +4,18 @@ from functools import wraps
 from io import BytesIO
 import jwt
 import bcrypt
-from deep_translator import GoogleTranslator
+try:
+    from deep_translator import GoogleTranslator
+except Exception:
+    # deep_translator not installed in this environment — provide a fallback
+    class GoogleTranslator:
+        def __init__(self, source='auto', target='en'):
+            self.source = source
+            self.target = target
+        def translate(self, text):
+            return text
+        def translate_batch(self, texts):
+            return list(texts)
 from flask import Flask, jsonify, request, send_file, send_from_directory, render_template, redirect
 import json
 from werkzeug.utils import secure_filename

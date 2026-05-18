@@ -115,44 +115,19 @@
 
 <section class="barc-two-column-grid">
 <section class="content-section featured-experience-showcase" id="featured-experience-showcase">
+    <h2 class="featured-exp-title" data-i18n="homeAchievementsTitle">Achievements & Experiences of Our Students</h2>
     <div class="featured-experience-wrapper">
-      <!-- Left: Featured Experience -->
-      <div class="featured-exp-left" id="home-featured-experience">
-        <h2 class="featured-exp-title" data-i18n="homeAchievementsTitle">Achievements & Experiences of Our Students</h2>
-        <div class="featured-exp-image-box" id="featured-exp-image-box">
-          {% if featured_submission %}
-            <div class="featured-exp-image-wrapper">
-              <img src="{{ featured_submission_url }}" alt="Featured experience photo" id="featured-exp-main-img" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />
-              <div class="featured-exp-image-label">
-                <div class="featured-exp-image-name">{{ featured_submission.studentName }}</div>
-                <div class="featured-exp-image-location">{{ featured_submission.organization or featured_submission.programme or '' }}</div>
-              </div>
-            </div>
-          {% else %}
-            <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Featured experience photo" id="featured-exp-main-img" />
-          {% endif %}
-        </div>
-        <div class="featured-exp-content">
-          {% if featured_submission %}
-            {% set preview = (featured_submission.summary[:420] ~ '...') if (featured_submission.summary and featured_submission.summary|length > 420) else (featured_submission.summary or '') %}
-            <p id="featured-exp-description">{{ preview }}</p>
-            <div class="featured-exp-actions">
-              <button class="button primary" type="button" onclick="openHomeExperienceModal('{{ featured_submission.id }}')">Read full story</button>
-            </div>
-          {% else %}
-            <p id="featured-exp-description">Loading experience...</p>
-          {% endif %}
-        </div>
-        <div class="featured-exp-dots" id="featured-exp-dots"></div>
-      </div>
+      <!-- Left: Featured Experience - rendered by JS -->
+      <div id="home-featured-experience" class="featured-exp-left"></div>
       
       <!-- Right: Archives (replacing "What's New") -->
       <div class="featured-exp-right">
-        <h3 class="featured-exp-right-title" data-i18n="homeArchivesTitle">Updates</h3>
+        <h3 class="featured-exp-right-title" data-i18n="homeArchivesTitle">OUR ARCHIVES</h3>
         <div class="featured-archives-box" id="featured-archives-box">
           {% if volumes and volumes|length %}
             <div class="archive-items-wrapper">
-              {% for volume in volumes[:3] %}
+              {% set sorted_volumes = volumes|sort(attribute='year')|reverse %}
+              {% for volume in sorted_volumes[:3] %}
                 <div class="archive-item">
                   <span class="archive-item-badge">
                     <span class="date-day">{{ (volume.publishedAt[:2] if volume.publishedAt else '01') }}</span>
@@ -183,6 +158,7 @@
       <h3 data-i18n="homeStudentVoices">Student Voices</h3>
       <p data-i18n="homeStudentVoicesDesc">Recent student narratives and experience cards.</p>
     </div>
+    <div id="home-experience-debug" style="color:var(--error); font-weight:700; margin-bottom:8px; display:none;"></div>
     <div class="experience-cards-grid" id="home-experience-rail" aria-live="polite"></div>
 </section>
 
@@ -205,6 +181,8 @@
   let _submissionsMap = {}; // Store submissions by ID for modal gallery lookup
   let homeExperiences = [];
   let homeFeaturedExperience = null;
+  let _homeFeaturedIndex = 0;
+  let _homeFeaturedTimer = null;
   let featuredExperiences = [];
   let featuredExpIndex = 0;
   let _featuredRotationTimer = null;
@@ -213,14 +191,14 @@
   let featuredGalleryTimer = null;
 
   const previewLength = 180;
-  const escapeHtml = window.escapeHtml || ((value) =>
+  const __homeEscapeHtml = window.escapeHtml || ((value) =>
     String(value)
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;'));
-  window.escapeHtml = escapeHtml;
+  window.escapeHtml = window.escapeHtml || __homeEscapeHtml;
 
   function updateStatistics(stats) {
     setStatValue('stat-visitors', stats.totalVisitors ?? stats.siteVisitors ?? 0);
@@ -291,7 +269,8 @@
 
     const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    container.innerHTML = `<div class="archive-items-wrapper">${volumes.map((volume, index) => {
+    const sorted = (Array.isArray(volumes) ? volumes.slice() : []).sort((a,b) => (Number(b.year)||0) - (Number(a.year)||0));
+    container.innerHTML = `<div class="archive-items-wrapper">${sorted.map((volume, index) => {
       const fallbackDate = new Date(Number(volume.year) || new Date().getFullYear(), index % 12, Math.min(28, (index + 1) * 3));
       const parsedDate = volume.publishedAt ? new Date(volume.publishedAt) : fallbackDate;
       const date = Number.isNaN(parsedDate.getTime()) ? fallbackDate : parsedDate;
@@ -307,8 +286,8 @@
           <span class="date-year">${year}</span>
         </span>
         <div class="archive-item-title">
-          <a href="/archive?vol=${encodeURIComponent(volume.id)}" class="archive-link">${escapeHtml(volume.volumeLabel)}</a>
-          <div class="archive-item-desc">${volume['items']} submissions · ${escapeHtml(volume.description || '')}</div>
+          <a href="/archive?vol=${encodeURIComponent(volume.id)}" class="archive-link">${__homeEscapeHtml(volume.volumeLabel)}</a>
+          <div class="archive-item-desc">${volume['items']} submissions · ${__homeEscapeHtml(volume.description || '')}</div>
         </div>
       </div>
     `;
@@ -351,32 +330,88 @@
     }
 
     const imageSrc = getHomeExperienceImageSrc(homeFeaturedExperience);
-    const detailText = normalizeFullText(homeFeaturedExperience.summary || homeFeaturedExperience.summaryPreview || '');
+    const previewText = homeFeaturedExperience.summaryPreview || makeHomePreview(homeFeaturedExperience.summary || '', 240);
     const intro = homeFeaturedExperience.organization || homeFeaturedExperience.programme || 'Featured student story';
-
+    // Stacked layout: image on top, then only the preview text and controls below (no labels)
     container.innerHTML = `
-      <article class="featured-experience student-featured-layout">
-        <div class="featured-experience-content student-featured-copy">
-          <div class="student-featured-kicker">Featured Student Experience</div>
-          <h3>${escapeHtml(homeFeaturedExperience.studentName)}</h3>
-          <p class="meta student-featured-meta">${escapeHtml(homeFeaturedExperience.programme)}${homeFeaturedExperience.programme && homeFeaturedExperience.organization ? ' • ' : ''}${escapeHtml(homeFeaturedExperience.organization)}</p>
-          <div class="student-featured-body">
-            <p>${escapeHtml(detailText || intro)}</p>
+      <article class="featured-experience student-featured-layout stacked">
+        <div class="featured-exp-image-box">
+          <div class="featured-exp-image-wrapper">
+            ${renderHomeHeroMedia(imageSrc, homeFeaturedExperience.studentName)}
+            <div class="featured-exp-image-label">
+              <div class="featured-exp-image-name">${__homeEscapeHtml(homeFeaturedExperience.studentName)}</div>
+              <div class="featured-exp-image-location">${__homeEscapeHtml(homeFeaturedExperience.organization || '')}</div>
+            </div>
           </div>
-          <div class="student-featured-points">
-            ${homeFeaturedExperience.duration ? `<p><strong>Duration:</strong> ${escapeHtml(homeFeaturedExperience.duration)}</p>` : ''}
-            ${homeFeaturedExperience.mentor ? `<p><strong>Mentor:</strong> ${escapeHtml(homeFeaturedExperience.mentor)}</p>` : ''}
-            ${homeFeaturedExperience.rollNumber ? `<p><strong>Roll No.:</strong> ${escapeHtml(homeFeaturedExperience.rollNumber)}</p>` : ''}
+        </div>
+
+        <div class="featured-exp-content stacked-content">
+          <div class="student-featured-body">
+            <p>${__homeEscapeHtml(previewText || intro)}</p>
           </div>
           <div class="student-featured-actions">
             <button class="button primary" type="button" onclick="openHomeExperienceModal('${escapeJs(String(homeFeaturedExperience.id))}')">Read full story</button>
           </div>
         </div>
-        <div class="featured-experience-media student-featured-media">
-          ${renderHomeHeroMedia(imageSrc, homeFeaturedExperience.studentName)}
-        </div>
       </article>
     `;
+  }
+
+  // Hero gallery: rotate barc-hero background images and render dots
+  function initializeHeroGallery(bootstrap) {
+    try {
+      const hero = document.querySelector('.barc-hero');
+      const dots = document.getElementById('featured-gallery-dots');
+      if (!hero) return;
+
+      const photos = [];
+      if (bootstrap && Array.isArray(bootstrap.heroImages)) photos.push(...bootstrap.heroImages);
+      if (Array.isArray(bootstrap.submissions)) {
+        bootstrap.submissions.forEach(s => {
+          if (s.gallery && Array.isArray(s.gallery) && s.gallery.length) photos.push(s.gallery[0]);
+          if (s.photo) photos.push(s.photo);
+          if (s.thumbnail) photos.push(s.thumbnail);
+          if (s.avatarUrl) photos.push(s.avatarUrl);
+        });
+      }
+
+      const resolved = [...new Set((photos || []).map(p => (p && (p.startsWith('data:') || p.startsWith('blob:') || /^(https?:)?\/\//.test(p) || p.startsWith('/api/uploads/') || p.startsWith('/static/')) ? p : (p ? `/api/uploads/avatars/${encodeURIComponent(p)}` : '') )).filter(Boolean))];
+      if (!resolved.length) return;
+
+      featuredGalleryPhotos = resolved;
+      featuredGalleryIndex = 0;
+
+      function showHero(i) {
+        const src = featuredGalleryPhotos[i];
+        hero.style.setProperty('--barc-hero-bg-b', `url("${src}")`);
+        hero.classList.add('bg-b-visible');
+        if (dots) {
+          dots.innerHTML = featuredGalleryPhotos.map((_, idx) => `<button class="hero-dot ${idx===i? 'active':''}" onclick="setHeroIndex(${idx})" aria-label="Show background ${idx+1}"></button>`).join('');
+        }
+      }
+
+      window.setHeroIndex = function(i) {
+        if (i >= 0 && i < featuredGalleryPhotos.length) {
+          featuredGalleryIndex = i;
+          showHero(i);
+          restartHeroTimer();
+        }
+      };
+
+      function nextHero() {
+        featuredGalleryIndex = (featuredGalleryIndex + 1) % featuredGalleryPhotos.length;
+        showHero(featuredGalleryIndex);
+      }
+
+      function restartHeroTimer() {
+        if (featuredGalleryTimer) clearInterval(featuredGalleryTimer);
+        const ms = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hero-rotation-ms')) || 5000;
+        featuredGalleryTimer = setInterval(nextHero, ms);
+      }
+
+      showHero(0);
+      restartHeroTimer();
+    } catch (e) { console.warn('Hero gallery init failed', e); }
   }
 
   function renderHomeExperienceRail() {
@@ -417,15 +452,15 @@
           </div>
           <div class="experience-card-copy">
             <div class="experience-card-quote-mark">&ldquo;</div>
-            <p class="experience-card-quote">${escapeHtml(quote)}</p>
+            <p class="experience-card-quote">${__homeEscapeHtml(quote)}</p>
           </div>
         </div>
         <div class="experience-card-footer">
           <div>
-            <div class="experience-card-name">${escapeHtml(item.studentName)}</div>
-            <div class="experience-card-role">${escapeHtml(item.organization || 'Student')}</div>
+            <div class="experience-card-name">${__homeEscapeHtml(item.studentName)}</div>
+            <div class="experience-card-role">${__homeEscapeHtml(item.organization || 'Student')}</div>
           </div>
-          <div class="experience-card-details">${escapeHtml(academicLine || item.organization || '')}</div>
+          <div class="experience-card-details">${__homeEscapeHtml(academicLine || item.organization || '')}</div>
         </div>
       </article>
     `;
@@ -438,7 +473,7 @@
     const modal = document.getElementById('home-experience-modal');
     const body = document.getElementById('home-experience-modal-body');
     const galleryMarkup = item.gallery && item.gallery.length
-      ? `<div class="experience-modal-gallery">${item.gallery.slice(0, 6).map((src) => `<img src="${escapeHtml(src)}" alt="Experience photo" />`).join('')}</div>`
+      ? `<div class="experience-modal-gallery">${item.gallery.slice(0, 6).map((src) => `<img src="${__homeEscapeHtml(src)}" alt="Experience photo" />`).join('')}</div>`
       : '';
 
     body.innerHTML = `
@@ -447,9 +482,9 @@
           ${renderHomeHeroMedia(getHomeExperienceImageSrc(item), item.studentName)}
         </div>
         <div class="experience-modal-copy">
-          <h2 id="home-experience-modal-title">${escapeHtml(item.studentName)}</h2>
-          <p class="experience-modal-meta">${escapeHtml(item.programme)}${item.programme && item.organization ? ' • ' : ''}${escapeHtml(item.organization)}${item.duration ? ' • ' + escapeHtml(item.duration) : ''}</p>
-          <p class="experience-modal-summary">${escapeHtml(item.summary || item.summaryPreview || '')}</p>
+          <h2 id="home-experience-modal-title">${__homeEscapeHtml(item.studentName)}</h2>
+          <p class="experience-modal-meta">${__homeEscapeHtml(item.programme)}${item.programme && item.organization ? ' • ' : ''}${__homeEscapeHtml(item.organization)}${item.duration ? ' • ' + __homeEscapeHtml(item.duration) : ''}</p>
+          <p class="experience-modal-summary">${__homeEscapeHtml(item.summary || item.summaryPreview || '')}</p>
           ${galleryMarkup}
         </div>
       </div>
@@ -472,11 +507,79 @@
   }
 
   function renderHomeHeroMedia(src, altText) {
-    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(altText || 'Experience photo')}" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />`;
+    return `<img src="${__homeEscapeHtml(src)}" alt="${__homeEscapeHtml(altText || 'Experience photo')}" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />`;
   }
 
   function renderHomeCardMedia(src, altText) {
-    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(altText || 'Experience photo')}" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />`;
+    return `<img src="${__homeEscapeHtml(src)}" alt="${__homeEscapeHtml(altText || 'Experience photo')}" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />`;
+  }
+
+  function renderFeaturedExperienceBox() {
+    const boxContainer = document.getElementById('featured-exp-image-box');
+    const descContainer = document.getElementById('featured-exp-description');
+    const dotsContainer = document.getElementById('featured-exp-dots');
+
+    if (!boxContainer || !descContainer || !dotsContainer) return;
+    if (!featuredExperiences || featuredExperiences.length === 0) {
+      descContainer.textContent = 'No featured experiences available.';
+      return;
+    }
+
+    const current = featuredExperiences[featuredExpIndex];
+    if (!current) return;
+
+    const imgSrc = getHomeExperienceImageSrc(current);
+    boxContainer.innerHTML = `
+      <div class="featured-exp-image-wrapper">
+        <img src="${__homeEscapeHtml(imgSrc)}" alt="Featured experience" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />
+        <div class="featured-exp-image-label">
+          <div class="featured-exp-image-name">${__homeEscapeHtml(current.studentName)}</div>
+          <div class="featured-exp-image-location">${__homeEscapeHtml(current.organization || 'Location')}</div>
+        </div>
+      </div>
+    `;
+
+    const previewText = makeHomePreview(current.summary || current.summaryPreview || '', 180);
+    descContainer.innerHTML = `
+      <p style="margin:0 0 12px; color: var(--ink);">${__homeEscapeHtml(previewText)}</p>
+      <div style="margin-top:8px;">
+        <button class="button primary" type="button" onclick="openExperienceModal('${escapeJs(current.id)}')">View more</button>
+      </div>
+    `;
+
+    dotsContainer.innerHTML = featuredExperiences.map((_, idx) => `
+      <div class="featured-exp-dot ${idx === featuredExpIndex ? 'active' : ''}" onclick="setFeaturedExpIndex(${idx}); restartFeaturedRotation();"></div>
+    `).join('');
+
+    restartFeaturedRotation();
+  }
+
+  window.setFeaturedExpIndex = function(index) {
+    if (index >= 0 && index < featuredExperiences.length) {
+      featuredExpIndex = index;
+      renderFeaturedExperienceBox();
+    }
+  };
+
+  function startFeaturedRotation() {
+    stopFeaturedRotation();
+    if (!featuredExperiences || featuredExperiences.length <= 1) return;
+    _featuredRotationTimer = setInterval(() => {
+      featuredExpIndex = (featuredExpIndex + 1) % featuredExperiences.length;
+      renderFeaturedExperienceBox();
+    }, 6000);
+  }
+
+  function stopFeaturedRotation() {
+    if (_featuredRotationTimer) {
+      clearInterval(_featuredRotationTimer);
+      _featuredRotationTimer = null;
+    }
+  }
+
+  function restartFeaturedRotation() {
+    stopFeaturedRotation();
+    startFeaturedRotation();
   }
 
   // ====== Initialization IIFE ======
@@ -489,7 +592,7 @@
         const bootstrapRes = await fetch('/api/bootstrap', { credentials: 'include' });
         bootstrapData = await bootstrapRes.json();
       }
-      isAuthenticated = Boolean(bootstrap.role);
+      isAuthenticated = Boolean(bootstrap && bootstrap.role);
 
       // Update Share button: if user is logged in, open forms directly
       try {
@@ -502,6 +605,9 @@
       }
 
       updateStatistics(bootstrapData.stats || {});
+
+      // Initialize hero gallery (rotating background images + dots)
+      initializeHeroGallery(bootstrapData);
 
       let submissions = Array.isArray(bootstrapData.submissions) ? bootstrapData.submissions : [];
 
@@ -539,182 +645,37 @@
 
       // Populate featured experiences for the showcase
       featuredExperiences = [homeFeaturedExperience, ...homeExperiences].filter(e => e);
-      if (featuredExperiences.length > 0) {
-        renderFeaturedExperienceBox();
-      }
-
       renderHomeFeaturedExperience();
+      // Debug: expose counts so we can see if submissions loaded
+      try {
+        const debug = document.getElementById('home-experience-debug');
+        if (debug) {
+          debug.style.display = 'block';
+          debug.textContent = `Featured: ${homeFeaturedExperience ? 1 : 0} • Rail: ${homeExperiences.length}`;
+        }
+      } catch (e) { /* ignore */ }
+      // Setup rotation among featured experiences (if multiple)
+      try {
+        if (_homeFeaturedTimer) {
+          clearInterval(_homeFeaturedTimer);
+          _homeFeaturedTimer = null;
+        }
+        if (Array.isArray(featuredExperiences) && featuredExperiences.length > 1) {
+          _homeFeaturedIndex = featuredExperiences.findIndex(f => String(f.id) === String(homeFeaturedExperience?.id));
+          if (_homeFeaturedIndex < 0) _homeFeaturedIndex = 0;
+          _homeFeaturedTimer = setInterval(() => {
+            _homeFeaturedIndex = (_homeFeaturedIndex + 1) % featuredExperiences.length;
+            homeFeaturedExperience = featuredExperiences[_homeFeaturedIndex];
+            renderHomeFeaturedExperience();
+          }, 6000);
+        }
+      } catch (e) {
+        console.warn('Featured rotation setup failed', e);
+      }
       renderHomeExperienceRail();
-      renderHomeExperienceDots();
     } catch (err) {
       console.error('Error loading home experience showcase:', err);
     }
-  }
-
-  function updateStatistics(stats) {
-    setStatValue('stat-visitors', stats.totalVisitors ?? stats.siteVisitors ?? 0);
-  }
-
-  function setStatValue(elementId, value) {
-    const element = document.getElementById(elementId);
-    if (element) {
-      element.textContent = Number(value || 0).toLocaleString('en-IN');
-    }
-  }
-
-  function normalizeSubmission(submission, index) {
-    const summary = String(submission.summary || '');
-    const summaryPreview = submission.summaryPreview || (summary.length > previewLength ? `${summary.slice(0, previewLength).trimEnd()}...` : summary);
-
-    return {
-      ...submission,
-      id: submission.id || submission._id || `testimonial-${index}`,
-      summaryPreview,
-      summary,
-    };
-  }
-
-  function buildArchiveVolumes(submissions) {
-    const groups = {};
-
-    (Array.isArray(submissions) ? submissions : []).forEach((submission) => {
-      const dateStr = submission.submittedAt || submission.createdAt || '';
-      const parsed = new Date(dateStr);
-      const year = Number.isNaN(parsed.getFullYear()) ? (submission.year || 'Unknown') : parsed.getFullYear();
-
-      if (!groups[year]) {
-        groups[year] = [];
-      }
-
-      groups[year].push(submission);
-    });
-
-    return Object.keys(groups)
-      .map((year) => {
-        const items = groups[year];
-        const latest = items.reduce((acc, current) => {
-          const date = new Date(current.submittedAt || current.createdAt || 0);
-          return !acc || date > acc ? date : acc;
-        }, null);
-
-        return {
-          id: `vol-${year}`,
-          volumeLabel: `Volume ${year}`,
-          year,
-          publishedAt: latest ? latest.toISOString() : '',
-          description: `Published collection of ${items.length} approved experiences from ${year}.`,
-          items: items.length,
-        };
-      })
-      .sort((a, b) => Number(b.year) - Number(a.year));
-  }
-
-  function renderFeaturedArchives(volumes) {
-    const container = document.getElementById('featured-archives-box');
-    if (!container) return;
-
-    if (!Array.isArray(volumes) || !volumes.length) {
-      container.innerHTML = `<div class="archive-items-wrapper"><p style="margin: 0; padding: 14px; color: var(--muted);">No archives yet.</p></div>`;
-      return;
-    }
-
-    const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    container.innerHTML = `<div class="archive-items-wrapper">${volumes.map((volume, index) => {
-      const fallbackDate = new Date(Number(volume.year) || new Date().getFullYear(), index % 12, Math.min(28, (index + 1) * 3));
-      const parsedDate = volume.publishedAt ? new Date(volume.publishedAt) : fallbackDate;
-      const date = Number.isNaN(parsedDate.getTime()) ? fallbackDate : parsedDate;
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = monthShort[date.getMonth()] || 'Jan';
-      const year = String(date.getFullYear());
-
-      return `
-      <div class="archive-item">
-        <span class="archive-item-badge">
-          <span class="date-day">${day}</span>
-          <span class="date-month">${month}</span>
-          <span class="date-year">${year}</span>
-        </span>
-        <div class="archive-item-title">
-          <a href="/archive?vol=${encodeURIComponent(volume.id)}" class="archive-link">${escapeHtml(volume.volumeLabel)}</a>
-          <div class="archive-item-desc">${volume.items} submissions · ${escapeHtml(volume.description || '')}</div>
-        </div>
-      </div>
-    `;
-    }).join('')}</div>`;
-  }
-
-  function renderFeaturedExperienceBox() {
-    const boxContainer = document.getElementById('featured-exp-image-box');
-    const descContainer = document.getElementById('featured-exp-description');
-    const dotsContainer = document.getElementById('featured-exp-dots');
-
-    if (!boxContainer || !descContainer || !dotsContainer) return;
-    if (!featuredExperiences || featuredExperiences.length === 0) {
-      descContainer.textContent = 'No featured experiences available.';
-      return;
-    }
-
-    const current = featuredExperiences[featuredExpIndex];
-    if (!current) return;
-
-    const imgSrc = getHomeExperienceImageSrc(current);
-    boxContainer.innerHTML = `
-      <div class="featured-exp-image-wrapper">
-        <img src="${escapeHtml(imgSrc)}" alt="Featured experience" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />
-        <div class="featured-exp-image-label">
-          <div class="featured-exp-image-name">${escapeHtml(current.studentName)}</div>
-          <div class="featured-exp-image-location">${escapeHtml(current.organization || 'Location')}</div>
-        </div>
-      </div>
-    `;
-
-    // Show a readable preview and a 'View more' button that opens the modal with full experience
-    const previewText = makeHomePreview(current.summary || current.summaryPreview || '', 180);
-    descContainer.innerHTML = `
-      <p style="margin:0 0 12px; color: var(--ink);">${escapeHtml(previewText)}</p>
-      <div style="margin-top:8px;">
-        <button class="button primary" type="button" onclick="openExperienceModal('${escapeJs(current.id)}')">View more</button>
-      </div>
-    `;
-
-    // Render pagination dots; clicking a dot sets the index and restarts rotation
-    dotsContainer.innerHTML = featuredExperiences.map((_, idx) => `
-      <div class="featured-exp-dot ${idx === featuredExpIndex ? 'active' : ''}" onclick="setFeaturedExpIndex(${idx}); restartFeaturedRotation();"></div>
-    `).join('');
-
-    // ensure auto-rotation runs
-    restartFeaturedRotation();
-  }
-
-  window.setFeaturedExpIndex = function(index) {
-    if (index >= 0 && index < featuredExperiences.length) {
-      featuredExpIndex = index;
-      renderFeaturedExperienceBox();
-    }
-  };
-
-  // Auto-rotation for featured experiences
-  let _featuredRotationTimer = null;
-  function startFeaturedRotation() {
-    stopFeaturedRotation();
-    if (!featuredExperiences || featuredExperiences.length <= 1) return;
-    _featuredRotationTimer = setInterval(() => {
-      featuredExpIndex = (featuredExpIndex + 1) % featuredExperiences.length;
-      renderFeaturedExperienceBox();
-    }, 6000);
-  }
-
-  function stopFeaturedRotation() {
-    if (_featuredRotationTimer) {
-      clearInterval(_featuredRotationTimer);
-      _featuredRotationTimer = null;
-    }
-  }
-
-  function restartFeaturedRotation() {
-    stopFeaturedRotation();
-    startFeaturedRotation();
   }
 
   function renderTestimonialCard(submission) {
@@ -727,24 +688,24 @@
 
     // build avatar content: prefer thumbnail/photo url, otherwise initials
     const initials = (submission.studentName || '').split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase();
-    const avatarHtml = renderAvatarMarkup(imgSrc, initials, `${escapeHtml(submission.studentName)} avatar`);
+    const avatarHtml = renderAvatarMarkup(imgSrc, initials, `${__homeEscapeHtml(submission.studentName)} avatar`);
 
-    const badgeHtml = submission.duration ? `<span class="badge">${escapeHtml(submission.duration)}</span>` : '';
+    const badgeHtml = submission.duration ? `<span class="badge">${__homeEscapeHtml(submission.duration)}</span>` : '';
 
     return `
-      <article class="card testimonial-card" data-submission-id="${escapeHtml(submission.id)}" id="testimonial-article-${escapeHtml(submission.id)}">
+      <article class="card testimonial-card" data-submission-id="${__homeEscapeHtml(submission.id)}" id="testimonial-article-${__homeEscapeHtml(submission.id)}">
         <div class="testimonial-head">
           ${avatarHtml}
           <div style="flex:1;">
-            <h3 class="testimonial-name">${escapeHtml(submission.studentName)}</h3>
-            <p class="meta testimonial-meta">${escapeHtml(submission.organization)} ${badgeHtml ? '• ' + badgeHtml : ''}</p>
+            <h3 class="testimonial-name">${__homeEscapeHtml(submission.studentName)}</h3>
+            <p class="meta testimonial-meta">${__homeEscapeHtml(submission.organization)} ${badgeHtml ? '• ' + badgeHtml : ''}</p>
           </div>
           <div class="testimonial-quote">“</div>
         </div>
 
         <div class="testimonial-copy" id="${summaryId}" style="margin-top:12px;">
-          <p class="testimonial-summary" id="${previewId}">${escapeHtml(submission.summaryPreview)}</p>
-          ${isAuthenticated && submission.summary ? `<p class="testimonial-summary full" id="${fullId}" aria-hidden="true">${escapeHtml(submission.summaryPreview)}</p>` : ''}
+          <p class="testimonial-summary" id="${previewId}">${__homeEscapeHtml(submission.summaryPreview)}</p>
+          ${isAuthenticated && submission.summary ? `<p class="testimonial-summary full" id="${fullId}" aria-hidden="true">${__homeEscapeHtml(submission.summaryPreview)}</p>` : ''}
         </div>
         <div class="testimonial-footer">
           <button
@@ -773,13 +734,13 @@
           ${mediaHtml}
         </div>
         <div class="featured-experience-content">
-          <h3 style="margin-top:0;">${escapeHtml(submission.studentName)}</h3>
-          <p class="meta" style="color: var(--muted); margin-top: 6px;">${escapeHtml(submission.organization)} • ${escapeHtml(submission.duration || '')}</p>
-          <p style="margin-top: 12px; color: var(--ink); line-height: 1.7;">${escapeHtml(submission.summaryPreview)}</p>
+          <h3 style="margin-top:0;">${__homeEscapeHtml(submission.studentName)}</h3>
+          <p class="meta" style="color: var(--muted); margin-top: 6px;">${__homeEscapeHtml(submission.organization)} • ${__homeEscapeHtml(submission.duration || '')}</p>
+          <p style="margin-top: 12px; color: var(--ink); line-height: 1.7;">${__homeEscapeHtml(submission.summaryPreview)}</p>
           <div style="margin-top: 14px;">
             <button class="button primary" onclick="openExperienceModal('${escapeJs(submission.id)}')">View more</button>
           </div>
-          ${submission.summary ? `<div id="featured-testimonial-full-${escapeHtml(submission.id)}" hidden style="margin-top:12px; color: var(--ink); line-height:1.6;">${escapeHtml(submission.summary)}</div>` : ''}
+          ${submission.summary ? `<div id="featured-testimonial-full-${__homeEscapeHtml(submission.id)}" hidden style="margin-top:12px; color: var(--ink); line-height:1.6;">${__homeEscapeHtml(submission.summary)}</div>` : ''}
         </div>
       </div>
     `;
@@ -800,11 +761,11 @@
 
   function renderAvatarMarkup(src, initials, altText) {
     if (!src) {
-      return `<div class="testimonial-avatar">${escapeHtml(initials)}</div>`;
+      return `<div class="testimonial-avatar">${__homeEscapeHtml(initials)}</div>`;
     }
 
-    const escapedSrc = escapeHtml(src);
-    const escapedAlt = escapeHtml(altText);
+    const escapedSrc = __homeEscapeHtml(src);
+    const escapedAlt = __homeEscapeHtml(altText);
     const escapedInitials = String(initials || '').replaceAll('"', '&quot;');
     const fallbackScript = `this.onerror=null;this.remove();this.parentElement.textContent="${escapedInitials}";`;
     return `<div class="testimonial-avatar"><img src="${escapedSrc}" alt="${escapedAlt}" onerror='${fallbackScript}' /></div>`;
@@ -872,11 +833,11 @@
     const preview = article.querySelector(`#testimonial-preview-${submissionId}`)?.textContent || '';
     const fullElem = article.querySelector(`#testimonial-full-${submissionId}`);
     const avatarImg = article.querySelector('.testimonial-avatar img');
-    const imgHtml = avatarImg ? `<div style="width:120px; height:120px; overflow:hidden; border-radius:8px; margin-right:16px; display:flex; align-items:center; justify-content:center;"><img src="${escapeHtml(avatarImg.src)}" alt="Student avatar" style="max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain;" /></div>` : '';
+    const imgHtml = avatarImg ? `<div style="width:120px; height:120px; overflow:hidden; border-radius:8px; margin-right:16px; display:flex; align-items:center; justify-content:center;"><img src="${__homeEscapeHtml(avatarImg.src)}" alt="Student avatar" style="max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain;" /></div>` : '';
 
     const bodyHtml = fullElem
-      ? `<p style="color: var(--ink); line-height:1.6;">${escapeHtml(fullElem.textContent)}</p>`
-      : `<p style="color: var(--muted);">${escapeHtml(preview)}</p><p style="margin-top:12px;"><a class="button primary" href="/auth?next=/">Login to read full story</a></p>`;
+      ? `<p style="color: var(--ink); line-height:1.6;">${__homeEscapeHtml(fullElem.textContent)}</p>`
+      : `<p style="color: var(--muted);">${__homeEscapeHtml(preview)}</p><p style="margin-top:12px;"><a class="button primary" href="/auth?next=/">Login to read full story</a></p>`;
 
     // Find submission data from bootstrap to get gallery images
     let galleryHtml = '';
@@ -888,13 +849,13 @@
         galleryHtml = `
           <div class="experience-gallery" style="margin-top:20px; border-top:1px solid rgba(29,42,36,0.1); padding-top:16px;">
             <h4 style="margin:0 0 12px; color: var(--brand); font-size:0.95rem;">Experience Gallery</h4>
-            <div class="experience-gallery-shell" data-gallery-id="${escapeHtml(submissionId)}">
+            <div class="experience-gallery-shell" data-gallery-id="${__homeEscapeHtml(submissionId)}">
               <button class="gallery-nav left" type="button" aria-label="Previous photo" onclick="moveModalGallery('${escapeJs(submissionId)}', -1, event)">‹</button>
-              <div class="experience-gallery-viewport" id="gallery-viewport-${escapeHtml(submissionId)}">
-                <div class="experience-gallery-track" id="gallery-track-${escapeHtml(submissionId)}">
+              <div class="experience-gallery-viewport" id="gallery-viewport-${__homeEscapeHtml(submissionId)}">
+                <div class="experience-gallery-track" id="gallery-track-${__homeEscapeHtml(submissionId)}">
                   ${submission.gallery.map((src, idx) => {
                 const resolvedSrc = resolveAvatarSrc(src);
-                      return `<div class="experience-gallery-item" role="button" tabindex="0" aria-label="Open photo ${idx + 1}" onclick="expandImage('${escapeHtml(resolvedSrc)}', event)"><img src="${escapeHtml(resolvedSrc)}" alt="Experience photo" loading="lazy" /></div>`;
+                      return `<div class="experience-gallery-item" role="button" tabindex="0" aria-label="Open photo ${idx + 1}" onclick="expandImage('${__homeEscapeHtml(resolvedSrc)}', event)"><img src="${__homeEscapeHtml(resolvedSrc)}" alt="Experience photo" loading="lazy" /></div>`;
               }).join('')}
                 </div>
               </div>
@@ -914,8 +875,8 @@
           <div style="display:flex; gap:16px; align-items:flex-start;">
             ${imgHtml}
             <div style="flex:1;">
-              <h2 style="margin:0 0 8px; color: var(--brand);">${escapeHtml(name)}</h2>
-              <p style="margin:0 0 12px; color: var(--muted);">${escapeHtml(meta)}</p>
+              <h2 style="margin:0 0 8px; color: var(--brand);">${__homeEscapeHtml(name)}</h2>
+              <p style="margin:0 0 12px; color: var(--muted);">${__homeEscapeHtml(meta)}</p>
               ${bodyHtml}
               ${galleryHtml}
             </div>
@@ -969,8 +930,8 @@
                 <span class="date-year">${yearText}</span>
               </span>
               <div class="archive-item-title">
-                <a href="/archive?vol=${encodeURIComponent(v.id || '')}" class="archive-link">${escapeHtml(label)}</a>
-                <div class="archive-item-desc">${items} submissions · ${escapeHtml(desc)}</div>
+                <a href="/archive?vol=${encodeURIComponent(v.id || '')}" class="archive-link">${__homeEscapeHtml(label)}</a>
+                <div class="archive-item-desc">${items} submissions · ${__homeEscapeHtml(desc)}</div>
               </div>
             </div>
           `;
@@ -1006,10 +967,10 @@
           <span class="archive-item-badge">
             <span class="date-day">01</span>
             <span class="date-month">Jan</span>
-            <span class="date-year">${escapeHtml(v.year)}</span>
+            <span class="date-year">${__homeEscapeHtml(v.year)}</span>
           </span>
           <div class="archive-item-title">
-            <a href="/archive?vol=${encodeURIComponent(v.year)}" class="archive-link">${escapeHtml(v.volumeLabel)}</a>
+            <a href="/archive?vol=${encodeURIComponent(v.year)}" class="archive-link">${__homeEscapeHtml(v.volumeLabel)}</a>
             <div class="archive-item-desc">${v.items} submissions · </div>
           </div>
         </div>
@@ -1115,7 +1076,7 @@
   function renderExpandedImage(src) {
     return `
       <img
-        src="${escapeHtml(src)}"
+        src="${__homeEscapeHtml(src)}"
         alt="P"
         style="max-width:96vw; max-height:96vh; width:auto; height:auto; object-fit:contain; border-radius:12px; box-shadow:0 24px 60px rgba(0,0,0,0.55);"
       />
@@ -1163,13 +1124,13 @@
         galleryHtml = `
           <div class="experience-gallery" style="margin-top:20px; border-top:1px solid rgba(29,42,36,0.08); padding-top:16px;">
             <h4 style="margin:0 0 12px; color: var(--brand); font-size:0.95rem;">Experience Gallery</h4>
-            <div class="experience-gallery-shell" data-gallery-id="${escapeHtml(submissionId)}">
+            <div class="experience-gallery-shell" data-gallery-id="${__homeEscapeHtml(submissionId)}">
               <button class="gallery-nav left" type="button" aria-label="Previous photo" onclick="moveModalGallery('${escapeJs(submissionId)}', -1, event)">‹</button>
-              <div class="experience-gallery-viewport" id="gallery-viewport-${escapeHtml(submissionId)}">
-                <div class="experience-gallery-track" id="gallery-track-${escapeHtml(submissionId)}">
+              <div class="experience-gallery-viewport" id="gallery-viewport-${__homeEscapeHtml(submissionId)}">
+                <div class="experience-gallery-track" id="gallery-track-${__homeEscapeHtml(submissionId)}">
                   ${submission.gallery.map((src, idx) => {
                     const resolvedSrc = resolveAvatarSrc(src);
-                    return `<div class="experience-gallery-item" role="button" tabindex="0" aria-label="Open photo ${idx + 1}" onclick="expandImage('${escapeHtml(resolvedSrc)}', event)"><img src="${escapeHtml(resolvedSrc)}" alt="Experience photo" loading="lazy" /></div>`;
+                    return `<div class="experience-gallery-item" role="button" tabindex="0" aria-label="Open photo ${idx + 1}" onclick="expandImage('${__homeEscapeHtml(resolvedSrc)}', event)"><img src="${__homeEscapeHtml(resolvedSrc)}" alt="Experience photo" loading="lazy" /></div>`;
                   }).join('')}
                 </div>
               </div>
@@ -1182,7 +1143,7 @@
       console.warn('Gallery render error:', err);
     }
 
-    const imgHtml = submission.thumbnail || submission.photo ? `<div style="width:110px; height:110px; overflow:hidden; border-radius:8px; margin-right:16px; display:flex; align-items:center; justify-content:center;"><img src="${escapeHtml(resolveAvatarSrc(submission.thumbnail||submission.photo))}" alt="avatar" style="max-width:100%; max-height:100%; object-fit:cover;" /></div>` : '';
+    const imgHtml = submission.thumbnail || submission.photo ? `<div style="width:110px; height:110px; overflow:hidden; border-radius:8px; margin-right:16px; display:flex; align-items:center; justify-content:center;"><img src="${__homeEscapeHtml(resolveAvatarSrc(submission.thumbnail||submission.photo))}" alt="avatar" style="max-width:100%; max-height:100%; object-fit:cover;" /></div>` : '';
 
     const modalHtml = `
       <div id="experience-modal" class="archive-modal testimonial-modal-overlay" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:9999; padding:24px;" onclick="if(event.target === this) closeExperienceModal()">
@@ -1191,9 +1152,9 @@
           <div style="display:flex; gap:16px; align-items:flex-start;">
             ${imgHtml}
             <div style="flex:1;">
-              <h2 style="margin:0 0 8px; color: var(--brand);">${escapeHtml(name)}</h2>
-              <p style="margin:0 0 12px; color: var(--muted);">${escapeHtml(meta)}</p>
-              <p style="color: var(--ink); line-height:1.6;">${escapeHtml(fullText)}</p>
+              <h2 style="margin:0 0 8px; color: var(--brand);">${__homeEscapeHtml(name)}</h2>
+              <p style="margin:0 0 12px; color: var(--muted);">${__homeEscapeHtml(meta)}</p>
+              <p style="color: var(--ink); line-height:1.6;">${__homeEscapeHtml(fullText)}</p>
               ${galleryHtml}
             </div>
           </div>
@@ -1532,6 +1493,14 @@
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .featured-experience-showcase .featured-exp-title {
+    margin-left: 2rem;
+    margin-right: 2rem;
   }
 
   .featured-experience-wrapper {
@@ -1541,6 +1510,8 @@
     align-items: start;
     width: 100%;
     padding: 0 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
   }
 
   .experience-rail-full {
