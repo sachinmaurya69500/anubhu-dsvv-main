@@ -10,11 +10,7 @@
       <h2 data-i18n="formsTitle">Submit Your Experience</h2>
       <p class="subtitle" data-i18n="formsSubtitle">Share your internship or field work experience with our community</p>
     </div>
-    <div class="page-badges" aria-label="Submission highlights">
-      <span class="page-badge">Share Your Journey</span>
-      <span class="page-badge">Personalized Guidance</span>
-      <span class="page-badge">Capture Moments</span>
-    </div>
+    <!-- Removed promotional badges per request -->
   </div>
 
   <div class="page-shell centered">
@@ -413,22 +409,14 @@
                 <strong>${form.submissionCount || 0}</strong>
                 <span>Submissions</span>
               </div>
-              <div class="form-stat">
-                <strong>${isAuth ? 'Open' : 'Login'}</strong>
-                <span>${isAuth ? 'Ready for you' : 'Required'}</span>
-              </div>
-              <div class="form-stat">
-                <strong>${submittedFormIds.has(String(form._id || form.id || '')) ? 'Done' : 'Fresh'}</strong>
-                <span>${submittedFormIds.has(String(form._id || form.id || '')) ? 'Submitted' : 'New entry'}</span>
-              </div>
             </div>
           </div>
           <div class="form-card-footer">
-            ${submittedFormIds.has(String(form._id || form.id || '')) ? '<span class="form-status">Already submitted</span>' : '<span class="form-status">Ready to submit</span>'}
+            ${submittedFormIds.has(String(form._id || form.id || '')) ? '<span class="form-status">Already submitted</span>' : ''}
             <button
               class="button primary button-sm"
-              onclick="loadFormModal('${form._id || form.id}', ${submittedFormIds.has(String(form._id || form.id || '')) ? 'true' : 'false'})"
-              ${!isAuth || submittedFormIds.has(String(form._id || form.id || '')) ? `disabled title="${!isAuth ? 'Login required' : 'You have already submitted this form.'}"` : ''}
+              onclick="${submittedFormIds.has(String(form._id || form.id || '')) ? 'void(0)' : (isAuth ? `loadFormModal('${form._id || form.id}', false)` : `window.location='/auth'`)}"
+              ${submittedFormIds.has(String(form._id || form.id || '')) ? `disabled title="You have already submitted this form."` : ''}
             >
               ${submittedFormIds.has(String(form._id || form.id || '')) ? 'Submitted' : 'Submit Response'}
             </button>

@@ -303,16 +303,7 @@ def seed_database():
                     'submissionCount': 0,
                     'createdAt': datetime.now(timezone.utc),
                 },
-                {
-                    'title': 'Field Practice Reflection',
-                    'category': 'Field Work',
-                    'deadline': '2026-07-01',
-                    'description': 'Share observations from practical field work.',
-                    'volumeId': '',
-                    'status': 'active',
-                    'submissionCount': 0,
-                    'createdAt': datetime.now(timezone.utc),
-                },
+                # Removed seeded Field Work form (not created by admin)
             ])
         
         # Add dummy submissions for carousel/archive

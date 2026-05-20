@@ -263,7 +263,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .site-header {
   width: 100%;
-  padding: 0.6rem 1.25rem;
+  padding: 0 rem 0rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -286,8 +286,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brand-logo {
-  width: 60px;
-  height: 60px;
+  width: 90px;
+  height: 90px;
   object-fit: contain;
   display: block;
   flex: 0 0 auto;
@@ -303,8 +303,8 @@ h1, h2, h3, h4, h5, h6 {
   position: absolute;
   top: 0;
   left: 0;
-  width: 60px;
-  height: 60px;
+  width: 90px;
+  height: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -493,7 +493,7 @@ h1, h2, h3, h4, h5, h6 {
   .brand-text-stack { display: none; }
   .brand-subtitle { font-size: calc(var(--brand-subtitle-size) * 0.95); }
   .brand-main { font-size: calc(var(--brand-subtitle-size) * var(--brand-main-scale)); }
-  .brand-logo { width: 48px; height: 48px; }
+  .brand-logo { width: 72px; height: 72px; }
 }
 
 .shell {
@@ -2893,13 +2893,13 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .brand-overlay {
-    width: 56px;
-    height: 56px;
+    width: 84px;
+    height: 84px;
   }
 
   .brand-logo {
-    width: 56px;
-    height: 56px;
+    width: 84px;
+    height: 84px;
   }
 
   .site-nav {
@@ -3148,8 +3148,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brand-logo {
-  width: 60px;
-  height: 60px;
+  width: 100px;
+  height: 100px;
 }
 
 .brand-text-stack {
@@ -3167,6 +3167,8 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--brand);
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  height: 40px;
+  overflow: hidden;
 }
 
 .brand-subtitle {
@@ -3174,6 +3176,8 @@ h1, h2, h3, h4, h5, h6 {
   color: #6d1a1a;
   font-size: clamp(0.78rem, 1.25vw, 0.98rem);
   font-weight: 600;
+  height: 20px;
+  overflow: hidden;
 }
 
 .hero-card {
@@ -3515,7 +3519,35 @@ h1, h2, h3, h4, h5, h6 {
 #home-experience-rail .experience-card-details,
 #home-experience-rail .testimonial-name,
 #home-experience-rail .testimonial-meta {
-  display: none;
+  display: block;
+}
+
+#home-experience-rail .experience-card-label {
+  margin: 0 0 4px;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+#home-experience-rail .experience-card-name {
+  margin: 0;
+  color: #ffffff
+}
+
+#home-experience-rail .experience-card-role {
+  margin: 2px 0 0;
+  color: #ffffff;
+  font-size: 0.92rem;
+}
+
+#home-experience-rail .experience-card-details {
+  margin: 0;
+  color: #ffd700;
+  font-size: 0.82rem;
+  text-align: right;
+  align-self: end;
 }
 .featured-exp-title {
   margin: 0 0 12px;
@@ -3678,8 +3710,8 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.7rem;
-  padding: 0.4rem 0.75rem;
+  gap: 0.3rem;
+  padding: 0.05rem 0.55rem;
   background: linear-gradient(135deg, #0c4e63, #13667b);
   color: #fff;
   border-radius: 0;
@@ -3690,20 +3722,24 @@ h1, h2, h3, h4, h5, h6 {
 .barc-utility-link {
   color: #fff;
   text-decoration: none;
-  font-size: 0.86rem;
+  font-size: 0.68rem;
   font-weight: 600;
+  line-height: 1;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
 }
 
 .barc-accessibility-tools {
   display: inline-flex;
-  gap: 0.25rem;
+  gap: 0.12rem;
 }
 
 .barc-utility-right {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.2rem;
 }
 
 .barc-tool {
@@ -3711,12 +3747,12 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
   border-radius: 0;
-  min-width: 1.8rem;
-  height: 1.8rem;
-  padding: 0 0.35rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.18rem;
   font-weight: 700;
-  font-size: 0.88rem;
-  line-height: 1.8rem;
+  font-size: 0.65rem;
+  line-height: 1.1rem;
 }
 
 .barc-utility-language {
@@ -3727,6 +3763,9 @@ h1, h2, h3, h4, h5, h6 {
 .barc-utility-language .lang-option {
   color: #fff;
   border-radius: 0;
+  font-size: 0.68rem;
+  padding: 0;
+  line-height: 1;
 }
 
 .barc-utility-language .lang-option.active {
@@ -3763,7 +3802,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 1rem;
   padding: 1rem;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 /* Crossfade background layers for the hero section. */
@@ -3779,6 +3818,7 @@ h1, h2, h3, h4, h5, h6 {
   position: absolute;
   inset: 0;
   z-index: 0;
+  pointer-events: none;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -3815,7 +3855,9 @@ h1, h2, h3, h4, h5, h6 {
   font-size: clamp(2rem, 4vw, 3.4rem);
   line-height: 1.05;
   max-width: 14ch;
+  font-weight: 800;
 }
+
 
 .barc-hero-lead {
   margin: 0;
@@ -3835,6 +3877,14 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.8rem;
+  position: relative;
+  z-index: 2;
+}
+
+.barc-hero-actions .button {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .barc-hero-panel {
@@ -4052,6 +4102,11 @@ h1, h2, h3, h4, h5, h6 {
     align-items: flex-start;
   }
 
+  .barc-utility-strip {
+    padding: 0.05rem 0.45rem;
+    gap: 0.2rem;
+  }
+
   .barc-utility-right {
     margin-left: 0;
     width: 100%;
@@ -4082,3 +4137,23 @@ h1, h2, h3, h4, h5, h6 {
     width: 1.75rem;
   }
 }
+
+/* Nav button color overrides: make menu buttons blue */
+.site-nav a,
+.site-nav button,
+.site-nav .button-link,
+.site-nav .button {
+  color: var(--brand) !important;
+  border-color: transparent;
+  background: transparent;
+  font-weight: 700 !important;
+}
+
+/* Ensure prominent primary nav buttons are blue with white text */
+.site-nav .button.primary,
+.site-nav .button.accent {
+  background: var(--brand) !important;
+  color: #fff !important;
+  border-color: var(--brand) !important;
+}
+
