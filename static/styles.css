@@ -499,7 +499,7 @@ h1, h2, h3, h4, h5, h6 {
 .shell {
   width: 100%;
   flex: 1;
-  padding: 1rem 0;
+  padding: 0 0;
   background: var(--bg);
   display: flex;
   flex-direction: column;

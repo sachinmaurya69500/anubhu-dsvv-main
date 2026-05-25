@@ -276,6 +276,16 @@
         }
       });
 
+      // Sort gallery photos alphabetically by student name.
+      allGalleryPhotos.sort((a, b) => {
+        const nameA = String(a.studentName || '').toLowerCase();
+        const nameB = String(b.studentName || '').toLowerCase();
+        if (nameA === nameB) {
+          return String(a.organization || '').localeCompare(String(b.organization || ''), undefined, { sensitivity: 'base' });
+        }
+        return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+      });
+
       filteredPhotos = [...allGalleryPhotos];
       renderGallery();
     } catch (err) {

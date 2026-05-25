@@ -10,11 +10,7 @@
       <h2 data-i18n="archiveTitle">Archive Volumes</h2>
       <p class="subtitle" data-i18n="archiveSubtitle">Explore published collections of internship experiences</p>
     </div>
-    <div class="page-badges" aria-label="Archive highlights">
-      <span class="page-badge">Treasured Collections</span>
-      <span class="page-badge">Expertly Curated</span>
-      <span class="page-badge">Easy to Explore</span>
-    </div>
+    <!-- Removed promotional badges per request -->
   </div>
 
   <div class="page-shell centered">
@@ -150,11 +146,7 @@
       html += `
         <div class="archive-card" style="animation-delay: ${index * 100}ms;">
           <div class="archive-card-header">
-            <div class="form-meta" style="margin-bottom: 0.75rem;">
-              <span class="meta-pill">Volume ${escapeHtml(String(vol.year))}</span>
-              <span class="meta-pill meta-pill--muted">${escapeHtml(String(vol.items || 0))} stories</span>
-            </div>
-            <h3 style="margin: 0; color: var(--brand); font-size: 1.3rem;">${escapeHtml(vol.volumeLabel)} <span style="font-size: 0.85rem; color: var(--gold);">(${vol.year})</span></h3>
+            <h3 style="margin: 0; color: var(--brand); font-size: 1.3rem;">${escapeHtml(vol.volumeLabel)}</h3>
             <p class="archive-date">Published: ${new Date(vol.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
           
@@ -178,7 +170,6 @@
           </div>
           
           <div class="archive-card-footer">
-            <span class="archive-hint">Browse approved stories in a curated academic volume</span>
             <button class="button primary" onclick="viewVolume('${vol.id}')">
               View Volume →
             </button>
@@ -207,11 +198,44 @@
     return String(str).replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n');
   }
 
+  function resolveAvatarSrc(value) {
+    const src = String(value || '').trim();
+    if (!src) return '';
+    if (/^(https?:)?\/\//.test(src) || src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('/api/uploads/avatars/') || src.startsWith('/static/')) {
+      return src;
+    }
+    return `/api/uploads/avatars/${encodeURIComponent(src)}`;
+  }
+
+  function isLikelyLogoAsset(value) {
+    const src = String(value || '').toLowerCase();
+    return src.includes('logo') || src.includes('dsvv') || src.includes('placeholder');
+  }
+
+  function getSubmissionPhoto(submission) {
+    const gallery = Array.isArray(submission?.gallery) ? submission.gallery : [];
+    const candidates = [
+      ...gallery,
+      submission?.photo,
+      submission?.thumbnail,
+      submission?.avatarUrl,
+    ];
+
+    for (const candidate of candidates) {
+      const normalized = resolveAvatarSrc(candidate);
+      if (normalized && !isLikelyLogoAsset(normalized)) {
+        return normalized;
+      }
+    }
+
+    return '';
+  }
+
   function expandFullStory(index) {
     const submission = currentVolumeSubmissions[index];
     if (!submission) return;
     
-    const photoUrl = submission.avatarUrl || submission.photo || submission.thumbnail || '';
+    const photoUrl = getSubmissionPhoto(submission);
     const fullSummary = submission.summary || '';
     const studentName = submission.studentName || '';
     const organization = submission.organization || '';
@@ -267,10 +291,11 @@
           <div style="display: grid; gap: 12px;">
             ${submissions.map((sub, idx) => `
               <div style="padding: 16px; background: var(--bg); border-left: 3px solid var(--gold); border-radius: 6px;">
-                ${sub.avatarUrl || sub.photo || sub.thumbnail ? `
+                ${getSubmissionPhoto(sub) ? `
                   <div style="margin-bottom: 12px;">
-                    <img src="${escapeHtml(sub.avatarUrl || sub.photo || sub.thumbnail)}" 
+                    <img src="${escapeHtml(getSubmissionPhoto(sub))}" 
                          alt="${escapeHtml(sub.studentName || 'Student')} photo" 
+                         onerror="this.style.display='none'"
                          style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--line);">
                   </div>
                 ` : ''}
