@@ -456,6 +456,21 @@ def verify_student_auth():
     except:
         return None
 
+
+def _check_password(password, password_hash):
+    """Safely compare a plaintext password against a stored bcrypt hash."""
+    if not password or not password_hash:
+        return False
+
+    try:
+        if isinstance(password_hash, bytes):
+            stored_hash = password_hash
+        else:
+            stored_hash = str(password_hash).encode()
+        return bcrypt.checkpw(str(password).encode(), stored_hash)
+    except Exception:
+        return False
+
 def require_auth(f):
     """Decorator for protected routes."""
     @wraps(f)
@@ -760,7 +775,7 @@ def auth_login():
             return jsonify({'message': 'Email and password required.'}), 400
         
         admin_user = admins.find_one({'email': email})
-        if admin_user and bcrypt.checkpw(password.encode(), admin_user['passwordHash'].encode()):
+        if admin_user and _check_password(password, admin_user.get('passwordHash')):
             token = sign_token(admin_user['_id'], admin_user['email'], admin_user['name'])
             response = jsonify({'user': {'id': str(admin_user['_id']), 'email': admin_user['email'], 'name': admin_user['name']}, 'role': 'admin'})
             response.set_cookie(
@@ -775,7 +790,7 @@ def auth_login():
             return response
 
         student_user = students.find_one({'email': email})
-        if student_user and bcrypt.checkpw(password.encode(), student_user['passwordHash'].encode()):
+        if student_user and _check_password(password, student_user.get('passwordHash')):
             students.update_one({'_id': student_user['_id']}, {'$set': {'lastLoginAt': datetime.now(timezone.utc)}})
             token = sign_student_token(student_user['_id'], student_user['email'], student_user['name'])
             response = jsonify({'user': {'id': str(student_user['_id']), 'email': student_user['email'], 'name': student_user['name']}, 'role': 'student'})
@@ -877,7 +892,7 @@ def student_login():
             return jsonify({'message': 'Email and password required.'}), 400
 
         user = students.find_one({'email': email})
-        if not user or not bcrypt.checkpw(password.encode(), user['passwordHash'].encode()):
+        if not user or not _check_password(password, user.get('passwordHash')):
             return jsonify({'message': 'Invalid student credentials.'}), 401
 
         students.update_one({'_id': user['_id']}, {'$set': {'lastLoginAt': datetime.now(timezone.utc)}})

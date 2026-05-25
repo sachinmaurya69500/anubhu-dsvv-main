@@ -6,20 +6,35 @@
 <section class="auth-page">
   <div class="login-card">
     <div class="login-left">
-      <div class="login-image-wrap">
-        <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Campus" />
+      <div class="login-left-copy">
+        <span class="login-eyebrow">Student Portal</span>
+        <h2 class="left-title" data-i18n="authUniversity">DEV SANSKRITI VISHWAVIDYALAYA</h2>
+        <p class="left-desc" data-i18n="authLeftDescription">Access your student services, notices, and forms from one secure Anubhuti portal.</p>
+        <div class="login-feature-list">
+          <div class="login-feature">
+            <span class="login-feature-dot"></span>
+            <span>Secure login for students and administrators</span>
+          </div>
+          <div class="login-feature">
+            <span class="login-feature-dot"></span>
+            <span>Quick access to portal updates and resources</span>
+          </div>
+          <div class="login-feature">
+            <span class="login-feature-dot"></span>
+            <span>Built around the DSVV campus identity</span>
+          </div>
+        </div>
       </div>
-      <h2 class="left-title" data-i18n="authUniversity">DEV SANSKRITI VISHWAVIDYALAYA</h2>
-      <p class="left-note" data-i18n="authStudentPortal">Student Portal</p>
-      <p class="left-desc" data-i18n="authLeftDescription">New students? Register first with your email and create a password. Existing students can log in directly.</p>
-      <p class="left-help"><a href="#" data-i18n="authRegisterPrompt" onclick="showRegister(event)" style="color:var(--brand); text-decoration:underline;">New to Anubhuti? Register here</a></p>
+      <p class="left-help"><a href="#" data-i18n="authRegisterPrompt" onclick="showRegister(event)">New to Anubhuti? Register here</a></p>
     </div>
 
     <div class="login-right">
       <div class="login-right-top">
         <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="DSVV logo" class="dsVV-logo" />
-        <h1 class="portal-title" data-i18n="authStudentsPortal">STUDENTS PORTAL</h1>
-        <p class="portal-sub" data-i18n="authSupportServices">student support services</p>
+        <div>
+          <h1 class="portal-title" data-i18n="authStudentsPortal">STUDENTS PORTAL</h1>
+          <p class="portal-sub" data-i18n="authSupportServices">student support services</p>
+        </div>
       </div>
 
       <div class="login-panel" id="login-panel">
@@ -33,7 +48,7 @@
             <label for="password-login">Password</label>
             <input type="password" id="password-login" name="password" placeholder="Enter your password" required />
           </div>
-          <div style="display:flex; gap:10px; align-items:center; margin-top:16px;">
+          <div class="auth-actions">
             <button type="submit" class="button primary" data-i18n="navLogin">Login</button>
           </div>
         </form>
@@ -184,35 +199,53 @@
 </script>
 
 <style>
-  .auth-page { min-height: calc(100vh - 220px); display:flex; align-items:center; justify-content:center; padding:40px 20px; background-image: url('https://source.unsplash.com/1600x900/?university,campus,india'), url('/assets/login-bg.svg'), linear-gradient(180deg,#e6eef3,#f3f6f8); background-size: cover; background-position: center; }
-  .login-card { width: 100%; max-width: 1100px; background: linear-gradient(180deg, rgba(255,255,255,0.95), #f7fafc); border-radius:12px; display:grid; grid-template-columns: 1fr 1fr; overflow:hidden; box-shadow: 0 30px 80px rgba(16,24,40,0.12); }
-  .login-left { padding: 48px; background: linear-gradient(180deg,#f1f5f9,#ffffff); display:flex; flex-direction:column; gap:18px; align-items:flex-start; }
-  .login-image-wrap { width:240px; height:160px; border-radius:12px; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.12); background:#fff; display:flex; align-items:center; justify-content:center; }
-  .login-image-wrap img { width:100%; height:100%; object-fit:cover; }
-  .left-title { margin: 6px 0 0; font-size:20px; letter-spacing:0.06em; color: #0f172a; font-weight:700; }
-  .left-note { color: var(--brand); font-weight:700; }
-  .left-desc { color: var(--muted); line-height:1.6; }
-  .left-help a { font-weight:600; }
+  .auth-page { min-height: calc(100vh - 220px); display:flex; align-items:center; justify-content:center; padding: 32px 18px 44px; position:relative; overflow:hidden; background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 36%), radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.12), transparent 28%), linear-gradient(180deg, #eef4fb 0%, #f7fafc 100%); }
+  .auth-page::before { content: ''; position:absolute; inset:0; background-image: radial-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px); background-size: 24px 24px; opacity: 0.35; pointer-events:none; }
+  .login-card { width: 100%; max-width: 1220px; background: rgba(255,255,255,0.78); backdrop-filter: blur(18px); border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 30px; display:grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); overflow:hidden; box-shadow: 0 30px 90px rgba(15, 23, 42, 0.15); position:relative; z-index:1; }
+  .login-left { position:relative; padding: 44px; display:flex; flex-direction:column; gap:18px; align-items:flex-start; color:#fff; background: linear-gradient(180deg, rgba(7, 17, 32, 0.35), rgba(7, 17, 32, 0.68)), url('/static/uploads/avatars/20260508120140_dsvv1-1-1-1024x861.jpg') center/cover no-repeat; }
+  .login-left::before { content: ''; position:absolute; inset:0; background: linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.05) 45%, rgba(245, 158, 11, 0.16)); pointer-events:none; }
+  .login-left::after { content: ''; position:absolute; inset:0; backdrop-filter: saturate(110%) blur(1px); pointer-events:none; }
+  .login-left-copy { position:relative; z-index:1; display:flex; flex-direction:column; gap:14px; max-width: 440px; }
+  .login-eyebrow { display:inline-flex; align-self:flex-start; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,0.18); color: #eff6ff; font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 800; border: 1px solid rgba(255,255,255,0.16); }
+  .left-title { margin: 0; font-size: clamp(1.9rem, 3vw, 3.15rem); line-height: 1.05; letter-spacing: 0.02em; color: #ffffff; font-weight: 800; text-shadow: 0 8px 24px rgba(15, 23, 42, 0.45); }
+  .left-desc { margin: 0; color: rgba(255,255,255,0.92); line-height: 1.75; font-size: 1rem; max-width: 36ch; }
+  .login-feature-list { display:grid; gap:10px; margin-top: 4px; }
+  .login-feature { display:flex; align-items:center; gap:10px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.16); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10); color: rgba(255,255,255,0.95); backdrop-filter: blur(6px); }
+  .login-feature-dot { width:10px; height:10px; border-radius:999px; background: linear-gradient(135deg, #fbbf24, #ffffff); box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.18); flex: 0 0 auto; }
+  .left-help { position:relative; z-index:1; margin: 0; }
+  .left-help a { font-weight:700; color: #ffffff; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,0.7); }
 
-  .login-right { padding: 36px 48px; display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+  .login-right { padding: 42px 40px; display:flex; flex-direction:column; justify-content:center; gap:18px; background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,250,252,0.96)); }
   .login-right-top { display:flex; align-items:center; gap:14px; width:100%; }
-  .dsVV-logo { width:78px; height:auto; }
-  .portal-title { margin: 0; font-size:28px; letter-spacing:0.04em; color:#0b1220; }
-  .portal-sub { margin:0; color:var(--gold); font-weight:600; font-size:0.9rem; }
+  .dsVV-logo { width:78px; height:auto; flex:0 0 auto; filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.08)); }
+  .portal-title { margin: 0; font-size: clamp(1.65rem, 2.5vw, 2.25rem); letter-spacing: 0.05em; color:#0b1220; line-height: 1.1; }
+  .portal-sub { margin: 4px 0 0; color: var(--gold); font-weight: 700; font-size: 0.9rem; text-transform: lowercase; }
 
-  .login-panel { width:100%; margin-top:12px; }
-  .panel-heading { margin: 6px 0 12px; color: var(--muted); font-weight:700; }
-  .auth-form .form-group { margin-bottom: 14px; }
-  .auth-form label { display: block; margin-bottom: 6px; color: var(--ink); font-weight: 600; font-size: 0.9rem; }
-  .auth-form input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); font-size: 0.95rem; }
+  .login-panel { width:100%; max-width: 460px; margin-left:auto; padding: 28px; border-radius: 24px; background: rgba(255,255,255,0.88); border: 1px solid rgba(148, 163, 184, 0.20); box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08); }
+  .panel-heading { margin: 0 0 16px; color: #0f172a; font-weight: 800; font-size: 1.2rem; }
+  .auth-form { display:flex; flex-direction:column; gap: 14px; }
+  .auth-form .form-group { margin-bottom: 0; }
+  .auth-form label { display:block; margin-bottom: 7px; color: var(--ink); font-weight: 700; font-size: 0.9rem; }
+  .auth-form input { width:100%; padding: 0.95rem 1rem; border-radius: 14px; border: 1.5px solid rgba(148, 163, 184, 0.55); font-size: 0.98rem; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; background: rgba(255,255,255,0.95); }
+  .auth-form input:hover { border-color: rgba(37, 99, 235, 0.55); }
+  .auth-form input:focus { outline:none; border-color: var(--brand); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12); transform: translateY(-1px); }
+  .auth-actions { margin-top: 6px; }
+  .auth-actions .button { width:100%; justify-content:center; }
+  .login-instructions { margin-top: 18px; color: var(--muted); font-size: 0.95rem; }
 
-  .login-instructions { margin-top:18px; color:var(--muted); font-size:0.95rem; }
-
-  @media (max-width: 900px) {
+  @media (max-width: 1080px) {
     .login-card { grid-template-columns: 1fr; }
-    .login-left { order: 2; }
     .login-right { order: 1; }
-    .login-image-wrap { width:180px; height:120px; }
+    .login-left { order: 2; }
+    .login-panel { max-width: none; margin-left: 0; }
+  }
+
+  @media (max-width: 720px) {
+    .auth-page { padding: 18px 14px 28px; }
+    .login-left, .login-right { padding: 24px 18px; }
+    .login-right-top { align-items:flex-start; }
+    .login-right-top .dsVV-logo { width: 64px; }
+    .login-left { min-height: 300px; }
   }
 </style>
 
