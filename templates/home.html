@@ -174,14 +174,6 @@
 </section>
 
 
-<section class="content-section section-spacing">
-  <div class="container">
-      <p class="barc-footer-note-text" style="margin: 0; text-align: center; font-size: 1rem; font-weight: 600; color: var(--ink);">
-      <span data-i18n="homeVisitorsLabel">Total visits:</span> <span id="stat-visitors" style="color: var(--accent); font-weight: 700;">0</span>
-    </p>
-  </div>
-</section>
-
 <div id="home-experience-modal" class="archive-modal testimonial-modal-overlay" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:9999; padding:24px;" onclick="if(event.target === this) closeHomeExperienceModal()">
   <div class="archive-modal-content home-experience-modal-shell" style="max-width:960px; width:min(960px, 100%); padding:0; max-height:80vh; overflow:hidden; position:relative;">
     <button class="modal-close-btn" type="button" onclick="closeHomeExperienceModal()">&times;</button>
@@ -209,6 +201,8 @@
   let featuredGalleryPhotos = [];
   let featuredGalleryIndex = 0;
   let featuredGalleryTimer = null;
+  let homeExperienceRailAutoScrollId = null;
+  let homeExperienceRailResumeTimer = null;
 
   const previewLength = 180;
   const __homeEscapeHtml = window.escapeHtml || ((value) =>
@@ -507,18 +501,18 @@
     const intro = homeFeaturedExperience.organization || homeFeaturedExperience.programme || 'Featured student story';
     // Stacked layout: image on top, then only the preview text and controls below (no labels)
     container.innerHTML = `
-      <article class="featured-experience student-featured-layout stacked">
+      <article class="featured-experience student-featured-layout">
         <div class="featured-exp-image-box">
           <div class="featured-exp-image-wrapper">
             ${renderHomeHeroMedia(imageSrc, homeFeaturedExperience.studentName)}
-            <div class="featured-exp-image-label">
-              <div class="featured-exp-image-name">${__homeEscapeHtml(homeFeaturedExperience.studentName)}</div>
-              <div class="featured-exp-image-location">${__homeEscapeHtml(homeFeaturedExperience.organization || '')}</div>
-            </div>
           </div>
         </div>
 
-        <div class="featured-exp-content stacked-content">
+        <div class="featured-exp-content">
+          <div class="featured-exp-image-label">
+            <div class="featured-exp-image-name">${__homeEscapeHtml(homeFeaturedExperience.studentName)}</div>
+            <div class="featured-exp-image-location">${__homeEscapeHtml(homeFeaturedExperience.organization || '')}</div>
+          </div>
           <div class="student-featured-body">
             <p>${__homeEscapeHtml(previewText || intro)}</p>
           </div>
@@ -592,12 +586,91 @@
     if (!rail) return;
     if (!homeExperiences.length) {
       rail.innerHTML = '<p style="text-align:center; color:var(--muted); padding:40px; width:100%;">No student experiences found.</p>';
+      rail.classList.remove('is-horizontal');
+      stopHomeExperienceRailAutoScroll();
       return;
     }
 
-    // Display only first 3 cards
-    const cardsToDisplay = homeExperiences.slice(0, 3);
-    rail.innerHTML = cardsToDisplay.map((item, index) => renderHomeExperienceCard(item, index)).join('');
+    const shouldScrollHorizontally = homeExperiences.length > 3;
+    const cardsToDisplay = shouldScrollHorizontally ? homeExperiences : homeExperiences.slice(0, 3);
+    const cardsHtml = cardsToDisplay.map((item, index) => renderHomeExperienceCard(item, index)).join('');
+
+    rail.classList.toggle('is-horizontal', shouldScrollHorizontally);
+    rail.innerHTML = shouldScrollHorizontally ? `${cardsHtml}${cardsHtml}` : cardsHtml;
+
+    if (shouldScrollHorizontally) {
+      startHomeExperienceRailAutoScroll();
+    } else {
+      stopHomeExperienceRailAutoScroll();
+    }
+  }
+
+  function startHomeExperienceRailAutoScroll() {
+    const rail = document.getElementById('home-experience-rail');
+    if (!rail || !rail.classList.contains('is-horizontal')) return;
+    stopHomeExperienceRailAutoScroll();
+
+    const speed = 0.35;
+
+    const tick = () => {
+      if (!rail.isConnected || !rail.classList.contains('is-horizontal')) {
+        stopHomeExperienceRailAutoScroll();
+        return;
+      }
+
+      const maxScrollLeft = rail.scrollWidth / 2;
+      if (maxScrollLeft <= rail.clientWidth + 1) {
+        stopHomeExperienceRailAutoScroll();
+        return;
+      }
+
+      if (!rail._homeRailPaused) {
+        rail.scrollLeft += speed;
+        if (rail.scrollLeft >= maxScrollLeft) {
+          rail.scrollLeft -= maxScrollLeft;
+        }
+      }
+
+      homeExperienceRailAutoScrollId = window.requestAnimationFrame(tick);
+    };
+
+    const pause = () => {
+      rail._homeRailPaused = true;
+      if (homeExperienceRailResumeTimer) {
+        clearTimeout(homeExperienceRailResumeTimer);
+      }
+      homeExperienceRailResumeTimer = setTimeout(() => {
+        rail._homeRailPaused = false;
+      }, 1100);
+    };
+
+    rail._homeRailPaused = false;
+    rail.onpointerenter = pause;
+    rail.onpointerdown = pause;
+    rail.onwheel = pause;
+    rail.ontouchstart = pause;
+
+    homeExperienceRailAutoScrollId = window.requestAnimationFrame(tick);
+  }
+
+  function stopHomeExperienceRailAutoScroll() {
+    if (homeExperienceRailAutoScrollId) {
+      window.cancelAnimationFrame(homeExperienceRailAutoScrollId);
+      homeExperienceRailAutoScrollId = null;
+    }
+    if (homeExperienceRailResumeTimer) {
+      clearTimeout(homeExperienceRailResumeTimer);
+      homeExperienceRailResumeTimer = null;
+    }
+
+    const rail = document.getElementById('home-experience-rail');
+    if (rail) {
+      rail._homeRailPaused = false;
+      rail.onpointerenter = null;
+      rail.onpointerdown = null;
+      rail.onwheel = null;
+      rail.ontouchstart = null;
+    }
   }
 
   function renderHomeExperienceDots() {
@@ -1676,13 +1749,13 @@
 
   .featured-experience-wrapper {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 3fr 1fr;
     gap: 2.5rem;
     align-items: start;
     width: 100%;
-    padding: 0 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
+    padding: 0;
+    max-width: none;
+    margin: 0;
   }
 
   .experience-rail-full {
@@ -1709,10 +1782,12 @@
 
   .featured-exp-left {
     grid-column: 1;
+    overflow: visible;
   }
 
   .featured-exp-right {
     grid-column: 2;
+    overflow: visible;
   }
 
   .featured-exp-image-box {
@@ -1729,6 +1804,7 @@
     position: relative;
     width: 100%;
     height: 100%;
+    overflow: hidden;
   }
 
   .featured-exp-image-box img,
@@ -1774,15 +1850,18 @@
 
   .featured-exp-image-label {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 12px 16px;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.72) 100%);
+    left: 16px;
+    right: auto;
+    bottom: 16px;
+    z-index: 3;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
     color: #fff;
-    display: flex;
+    display: inline-flex;
     flex-direction: column;
     gap: 4px;
+    border-radius: 8px;
+    max-width: calc(100% - 40px);
   }
 
   .featured-exp-image-name {
@@ -2042,11 +2121,11 @@
   .student-featured-layout.featured-experience {
     background: #fff;
     border: 1px solid rgba(21, 49, 82, 0.12);
-    border-radius: 26px;
+    border-radius: 0;
     box-shadow: 0 24px 60px rgba(11, 31, 58, 0.08);
-    overflow: hidden;
+    overflow: visible;
     display: grid;
-    grid-template-columns: minmax(360px, 46%) 1fr;
+    grid-template-columns: minmax(360px, 62%) 1fr;
     gap: 0;
     align-items: stretch;
   }
@@ -2055,6 +2134,31 @@
     justify-content: flex-start;
     padding: 34px 34px 30px;
     background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  }
+
+  /* Make the featured image fill the full height of the article (matches text area) */
+  .featured-exp-image-box {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border-radius: 0 !important;
+    overflow: hidden;
+  }
+
+  .featured-exp-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .featured-exp-image-wrapper img,
+  .featured-exp-image-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 0 !important;
   }
 
   .student-featured-kicker {
@@ -2156,20 +2260,121 @@
 
   /* Cards section below featured experience */
   .experience-cards-section {
-    background: #fff;
-    padding: 2rem 0;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at top left, rgba(11, 95, 168, 0.08), transparent 38%),
+      radial-gradient(circle at top right, rgba(20, 184, 166, 0.08), transparent 34%),
+      linear-gradient(180deg, #f8fbff 0%, #ffffff 38%, #f6f9fc 100%);
+    padding: 3.5rem 0 4rem;
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
   }
 
+  .barc-hero,
+  .barc-announcement-strip,
+  .vision-section,
+  .experience-cards-section {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .vision-section {
+    padding-top: 0;
+  }
+
+  .experience-cards-section::before,
+  .experience-cards-section::after {
+    content: '';
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+    filter: blur(10px);
+    opacity: 0.55;
+  }
+
+  .experience-cards-section::before {
+    width: 220px;
+    height: 220px;
+    top: -90px;
+    left: -70px;
+    background: radial-gradient(circle, rgba(11, 95, 168, 0.16) 0%, rgba(11, 95, 168, 0) 70%);
+  }
+
+  .experience-cards-section::after {
+    width: 260px;
+    height: 260px;
+    right: -110px;
+    bottom: -130px;
+    background: radial-gradient(circle, rgba(15, 118, 110, 0.14) 0%, rgba(15, 118, 110, 0) 72%);
+  }
+
+  .experience-cards-section .barc-card-header {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto 1.75rem;
+    padding: 0 1.5rem;
+    text-align: center;
+  }
+
+  .experience-cards-section .barc-card-header h3 {
+    margin: 0 0 0.65rem;
+    font-size: clamp(1.55rem, 2vw, 2.2rem);
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--brand);
+  }
+
+  .experience-cards-section .barc-card-header p {
+    margin: 0 auto;
+    max-width: 60ch;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
   .experience-cards-grid {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 28px;
     padding: 0 2rem;
     max-width: 1400px;
     margin: 0 auto;
+    align-items: stretch;
+  }
+
+  .experience-cards-grid.is-horizontal {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    justify-content: flex-start;
+    gap: 24px;
+    padding-bottom: 0.75rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    cursor: grab;
+  }
+
+  .experience-cards-grid.is-horizontal::-webkit-scrollbar {
+    display: none;
+  }
+
+  .experience-cards-grid.is-horizontal .experience-card {
+    flex: 0 0 clamp(280px, 30vw, 360px);
+    width: clamp(280px, 30vw, 360px);
+    scroll-snap-align: start;
+  }
+
+  .experience-cards-grid.is-horizontal .experience-card:hover {
+    transform: translateY(-6px);
   }
 
   @media (max-width: 1024px) {
@@ -2186,20 +2391,31 @@
 
   .experience-card {
     min-height: 280px;
-    border-radius: 14px;
+    border-radius: 0 !important;
     overflow: hidden;
     color: #fff;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 16px 32px rgba(4, 10, 24, 0.16);
+    box-shadow:
+      0 20px 40px rgba(4, 10, 24, 0.14),
+      0 2px 0 rgba(255, 255, 255, 0.18) inset;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+
+  .experience-card:hover {
+    transform: translateY(-8px);
+    box-shadow:
+      0 28px 54px rgba(4, 10, 24, 0.18),
+      0 2px 0 rgba(255, 255, 255, 0.18) inset;
   }
 
   .experience-card-top {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: 12px 14px 8px;
-    min-height: 58px;
+    padding: 14px 16px 10px;
+    min-height: 60px;
     background: var(--theme-header);
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
   }
@@ -2215,8 +2431,8 @@
 
   .experience-card-logo {
     flex: 0 0 auto;
-    width: 60px;
-    height: 60px;
+    width: 52px;
+    height: 52px;
     background: transparent;
     border-radius: 0;
     overflow: visible;
@@ -2234,8 +2450,8 @@
     flex: 1 1 auto;
     display: grid;
     grid-template-columns: 126px 1fr;
-    gap: 12px;
-    padding: 12px 14px 6px;
+    gap: 14px;
+    padding: 14px 16px 8px;
     align-items: start;
     background: var(--theme-body);
   }
@@ -2243,10 +2459,23 @@
   .experience-card-photo {
     width: 126px;
     height: 128px;
-    border: 3px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12), 0 10px 18px rgba(0, 0, 0, 0.16);
+    border: 4px solid rgba(255, 255, 255, 0.92);
+    box-shadow: 0 14px 24px rgba(0, 0, 0, 0.18);
     background: #fff;
     overflow: hidden;
+    border-radius: 0 !important;
+  }
+
+  .experience-card,
+  .experience-card-top,
+  .experience-card-body,
+  .experience-card-footer,
+  .experience-card-photo,
+  .experience-card-photo img,
+  .experience-card-top::before,
+  .experience-card-bottom,
+  .experience-card .brand-logo {
+    border-radius: 0 !important;
   }
 
   .experience-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -2264,7 +2493,7 @@
     position: absolute;
     left: 2px;
     top: -6px;
-    font-size: 2.8rem;
+    font-size: 3rem;
     line-height: 1;
     color: var(--theme-accent);
     opacity: 0.95;
@@ -2272,8 +2501,8 @@
 
   .experience-card-quote {
     margin: 0;
-    font-size: 10px;
-    line-height: 1.6;
+    font-size: 12px;
+    line-height: 1.7;
     text-align: center;
     color: var(--theme-ink);
     font-style: italic;
@@ -2286,7 +2515,7 @@
     justify-content: space-between;
     gap: 12px;
     align-items: flex-end;
-    padding: 10px 14px 14px;
+    padding: 12px 16px 16px;
     background: var(--theme-footer);
     border-top: 1px solid rgba(255, 255, 255, 0.14);
   }
@@ -2313,6 +2542,29 @@
     color: var(--theme-subtext);
     line-height: 1.4;
     font-weight: 600;
+  }
+  .barc-hero,
+  .barc-announcement-strip,
+  .vision-section,
+  .experience-cards-section {
+    border-radius: 0 !important;
+  }
+
+  .vision-media img {
+    border-radius: 0 !important;
+  }
+
+  @media (max-width: 768px) {
+    .experience-cards-grid.is-horizontal {
+      gap: 18px;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .experience-cards-grid.is-horizontal .experience-card {
+      flex-basis: 82vw;
+      width: 82vw;
+    }
   }
 
   .experience-card.theme-navy {
@@ -2489,6 +2741,36 @@
     .student-featured-layout.featured-experience { grid-template-columns: 1fr; }
     .student-featured-layout .student-featured-media { min-height: 280px; }
     .student-featured-layout .student-featured-copy { padding: 24px 22px 22px; }
+  }
+
+  /* Override: keep featured article side-by-side and let image match text height
+     (useful for desktop/tablet where combined height should match). */
+  @media (min-width: 700px) {
+    .student-featured-layout.featured-experience {
+      grid-template-columns: minmax(360px, 62%) 1fr !important;
+      align-items: stretch !important;
+    }
+
+    .student-featured-layout.featured-experience .featured-exp-image-box {
+      height: auto;
+      min-height: 100%;
+      border-radius: 0 !important;
+      overflow: hidden;
+    }
+
+    .student-featured-layout.featured-experience .featured-exp-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 34px;
+    }
+
+    .student-featured-layout.featured-experience .featured-exp-image-wrapper img {
+      height: 100%;
+      width: 100%;
+      object-fit: cover;
+      border-radius: 0 !important;
+    }
   }
 
   @media (max-width: 640px) {

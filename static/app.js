@@ -39,7 +39,7 @@ const TRANSLATIONS = {
     footerGuidelines: 'Guidelines',
     footerFaqs: 'FAQs',
     footerContactTitle: 'Contact Us',
-    footerContactText: 'Have questions or need support? Reach out to us at <a href="mailto:geetavpsgayatri@gmail.com">geetavpsgayatri@gmail.com</a>',
+    footerContactText: 'Have questions or need support? Reach out to us at <a href="mailto:sdc@dsvv.ac.in">sdc@dsvv.ac.in</a>',
     footerCopyright: '&copy; 2026 Anubhuti. Part of Dev Sanskriti Vishwavidyalaya',
     homeViewExperiences: 'View Experiences',
     homeExploreGallery: 'Explore Gallery',
@@ -104,7 +104,7 @@ const TRANSLATIONS = {
     footerGuidelines: 'दिशानिर्देश',
     footerFaqs: 'अक्सर पूछे जाने वाले प्रश्न',
     footerContactTitle: 'संपर्क करें',
-    footerContactText: 'कोई प्रश्न या सहायता चाहिए? हमें यहाँ संपर्क करें: <a href="mailto:geetavpsgayatri@gmail.com">geetavpsgayatri@gmail.com</a>',
+    footerContactText: 'कोई प्रश्न या सहायता चाहिए? हमें यहाँ संपर्क करें: <a href="mailto:sdc@dsvv.ac.in">sdc@dsvv.ac.in</a>',
     footerCopyright: '&copy; 2026 अनुभूति। देव संस्कृति विश्वविद्यालय का एक भाग',
     homeViewExperiences: 'अनुभव देखें',
     homeExploreGallery: 'गैलरी देखें',
@@ -570,6 +570,23 @@ function setVisitorId(id) {
   }
 }
 
+let archiveHeightSyncTimer = null;
+function syncArchivePanelHeightWithFeaturedImage() {
+  const imageBox = document.querySelector('.featured-exp-left .featured-exp-image-box');
+  const archivePanel = document.querySelector('.featured-exp-right');
+  if (!imageBox || !archivePanel) {
+    return;
+  }
+  const height = Math.round(imageBox.getBoundingClientRect().height);
+  archivePanel.style.height = `${height}px`;
+  archivePanel.style.minHeight = `${height}px`;
+}
+function scheduleArchiveHeightSync() {
+  clearTimeout(archiveHeightSyncTimer);
+  archiveHeightSyncTimer = window.setTimeout(syncArchivePanelHeightWithFeaturedImage, 80);
+}
+window.addEventListener('resize', scheduleArchiveHeightSync);
+
 async function trackVisitor() {
   try {
     const path = window.location.pathname || 'home';
@@ -605,6 +622,85 @@ document.addEventListener('DOMContentLoaded', () => {
   initLanguageToggle();
   startDynamicTranslationObserver();
   trackVisitor();
+  syncArchivePanelHeightWithFeaturedImage();
+  // Make sections below the featured overlay re-emerge from below
+  try {
+    const featured = document.querySelector('.student-featured-layout.featured-experience');
+    if (featured) {
+      // collect following sibling elements and mark them for re-emergence
+      const toAnimate = [];
+      let el = featured.nextElementSibling || featured.parentElement ? featured.parentElement.nextElementSibling : null;
+      // If featured is inside an article, consider siblings of its container
+      if (!el && featured.parentElement) el = featured.parentElement.nextElementSibling;
+      while (el) {
+        // only animate element nodes and skip script/style
+        if (el.nodeType === 1) {
+          el.classList.add('reemerge-section');
+          toAnimate.push(el);
+        }
+        el = el.nextElementSibling;
+      }
+
+      // trigger reveal slightly after load so transition runs
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          toAnimate.forEach(a => a.classList.add('revealed'));
+        }, 60);
+      });
+    }
+  } catch (err) {
+    // non-critical
+    console.warn('re-emergence animation error', err);
+  }
+
+      // Initialize archive marquee (continuous vertical scroll) similar to external site
+      try {
+        document.querySelectorAll('.archive-items-track').forEach((track, idx) => {
+          if (!track) return;
+          if (track.dataset.marqueeInit) return; // already initialized
+          const viewport = track.closest('.archive-items-viewport') || track.parentElement;
+          if (!viewport) return;
+
+          // duplicate content for seamless loop
+          const originalHTML = track.innerHTML;
+          if (!originalHTML.trim()) return;
+          track.innerHTML = originalHTML + originalHTML;
+
+          // compute original content height (sum heights of first half children)
+          const children = Array.from(track.children);
+          const half = Math.floor(children.length / 2);
+          let originalHeight = 0;
+          for (let i = 0; i < half; i++) {
+            const r = children[i].getBoundingClientRect();
+            originalHeight += r.height;
+            const style = window.getComputedStyle(children[i]);
+            originalHeight += parseFloat(style.marginTop || 0) + parseFloat(style.marginBottom || 0);
+          }
+          if (!originalHeight) originalHeight = track.scrollHeight / 2 || 300;
+
+          // speed in px/sec (tweakable). Using a moderate slow speed to match the referenced site.
+          const speed = 40; // px per second
+          const duration = Math.max(5, Math.round(originalHeight / speed));
+
+          // create unique keyframes for this track
+          const name = `archiveMarquee_${Date.now()}_${idx}`;
+          const styleTag = document.createElement('style');
+          styleTag.type = 'text/css';
+          styleTag.innerHTML = `@keyframes ${name} { from { transform: translateY(0); } to { transform: translateY(-${originalHeight}px); } }`;
+          document.head.appendChild(styleTag);
+
+          // apply animation
+          track.style.animation = `${name} ${duration}s linear infinite`;
+          track.style.willChange = 'transform';
+          track.dataset.marqueeInit = '1';
+
+          // pause on hover (like marquee onmouseover/mouseout)
+          viewport.addEventListener('mouseenter', () => { track.style.animationPlayState = 'paused'; });
+          viewport.addEventListener('mouseleave', () => { track.style.animationPlayState = 'running'; });
+        });
+      } catch (err) {
+        console.warn('archive marquee init error', err);
+      }
 });
 
 const todayIso = () => new Date().toISOString().slice(0, 10);

@@ -134,8 +134,6 @@
     }
 
     const imageSrc = getHomeExperienceImageSrc(homeFeaturedExperience);
-    const detailText = normalizeFullText(homeFeaturedExperience.summary || homeFeaturedExperience.summaryPreview || '');
-    const intro = homeFeaturedExperience.organization || homeFeaturedExperience.programme || 'Featured student story';
 
     container.innerHTML = `
       <article class="featured-experience student-featured-layout">
@@ -143,6 +141,9 @@
           <div class="student-featured-kicker">Featured Student Experience</div>
           <h3>${escapeHtml(homeFeaturedExperience.studentName)}</h3>
           <p class="meta student-featured-meta">${escapeHtml(homeFeaturedExperience.programme)}${homeFeaturedExperience.programme && homeFeaturedExperience.organization ? ' • ' : ''}${escapeHtml(homeFeaturedExperience.organization)}</p>
+    const detailText = homeFeaturedExperience.summaryPreview || makeHomePreview(homeFeaturedExperience.summary || '', previewLength);
+    const intro = homeFeaturedExperience.organization || homeFeaturedExperience.programme || 'Featured student story';
+
           <div class="student-featured-body">
             <p>${escapeHtml(detailText || intro)}</p>
           </div>
