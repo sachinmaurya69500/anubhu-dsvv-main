@@ -290,20 +290,20 @@
 
           <div style="display: grid; gap: 12px;">
             ${submissions.map((sub, idx) => `
-              <div style="padding: 16px; background: var(--bg); border-left: 3px solid var(--gold); border-radius: 6px;">
+              <div style="padding: 16px; background: rgba(255,255,255,0.04); border-left: 3px solid #ffd400; border-radius: 6px;">
                 ${getSubmissionPhoto(sub) ? `
                   <div style="margin-bottom: 12px;">
                     <img src="${escapeHtml(getSubmissionPhoto(sub))}" 
                          alt="${escapeHtml(sub.studentName || 'Student')} photo" 
                          onerror="this.style.display='none'"
-                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid var(--line);">
+                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid rgba(255,255,255,0.12);">
                   </div>
                 ` : ''}
-                <p style="margin: 0 0 6px; font-weight: 700; color: var(--brand);">${idx + 1}. ${escapeHtml(sub.studentName || '')}</p>
-                <p style="margin: 0 0 6px; color: var(--ink);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 4px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#4285F4"/></svg>${escapeHtml(sub.organization || '')} — ${escapeHtml(sub.duration || '')}</p>
-                <p style="margin: 0 0 8px; color: var(--muted);">${escapeHtml(sub.summaryPreview || '')}</p>
+                <p style="margin: 0 0 6px; font-weight: 700; color: #ffd400;">${idx + 1}. ${escapeHtml(sub.studentName || '')}</p>
+                <p style="margin: 0 0 6px; color: #edf2f7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 4px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#79c0ff"/></svg>${escapeHtml(sub.organization || '')} — ${escapeHtml(sub.duration || '')}</p>
+                <p style="margin: 0 0 8px; color: #d8e2f4;">${escapeHtml(sub.summaryPreview || '')}</p>
                 <div style="margin-top:8px;">
-                  ${sub.summary ? (isAuthenticated ? `<button class="button primary" onclick="expandFullStory(${idx})">Read full story</button>` : `<button class="button primary" onclick="window.location.href='/auth?next=/archive'">Read full story</button>`) : `<span style="color: var(--muted);">No full story available</span>`}
+                  ${sub.summary ? (isAuthenticated ? `<button class="button primary" onclick="expandFullStory(${idx})">Read full story</button>` : `<button class="button primary" onclick="window.location.href='/auth?next=/archive'">Read full story</button>`) : `<span style="color: #cbd5e1;">No full story available</span>`}
                 </div>
               </div>
             `).join('')}
@@ -428,7 +428,7 @@
   }
 
   .archive-modal-content {
-    background: var(--surface);
+    background: #071726;
     border-radius: var(--radius-lg);
     padding: 35px;
     max-width: 600px;
@@ -436,7 +436,26 @@
     max-height: 80vh;
     overflow-y: auto;
     position: relative;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #f6f9fd;
+  }
+
+  .archive-modal-content h2,
+  .archive-modal-content p,
+  .archive-modal-content div,
+  .archive-modal-content span,
+  .archive-modal-content li,
+  .archive-modal-content button {
+    color: #f6f9fd !important;
+  }
+
+  .archive-modal-content h2 {
+    color: #ffd400 !important;
+  }
+
+  .archive-modal-content a {
+    color: #79c0ff !important;
   }
 
   .modal-close-btn {

@@ -202,6 +202,7 @@
   let featuredGalleryIndex = 0;
   let featuredGalleryTimer = null;
   let homeExperienceRailAutoScrollId = null;
+  let homeExperienceRailAutoScrollMode = null;
   let homeExperienceRailResumeTimer = null;
 
   const previewLength = 180;
@@ -591,7 +592,8 @@
       return;
     }
 
-    const shouldScrollHorizontally = homeExperiences.length > 3;
+    const isMobile = window.innerWidth <= 768;
+    const shouldScrollHorizontally = (isMobile && homeExperiences.length > 1) || (!isMobile && homeExperiences.length > 3);
     const cardsToDisplay = shouldScrollHorizontally ? homeExperiences : homeExperiences.slice(0, 3);
     const cardsHtml = cardsToDisplay.map((item, index) => renderHomeExperienceCard(item, index)).join('');
 
@@ -609,6 +611,56 @@
     const rail = document.getElementById('home-experience-rail');
     if (!rail || !rail.classList.contains('is-horizontal')) return;
     stopHomeExperienceRailAutoScroll();
+
+    const pause = () => {
+      rail._homeRailPaused = true;
+      if (homeExperienceRailResumeTimer) {
+        clearTimeout(homeExperienceRailResumeTimer);
+      }
+      homeExperienceRailResumeTimer = setTimeout(() => {
+        rail._homeRailPaused = false;
+      }, 1100);
+    };
+
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+      const getStepWidth = () => {
+        const firstCard = rail.querySelector('.experience-card');
+        if (!firstCard) return rail.clientWidth;
+        const styles = window.getComputedStyle(rail);
+        const gapValue = Number.parseFloat(styles.columnGap || styles.gap || '0') || 0;
+        return firstCard.getBoundingClientRect().width + gapValue;
+      };
+
+      const step = () => {
+        if (!rail.isConnected || !rail.classList.contains('is-horizontal')) {
+          stopHomeExperienceRailAutoScroll();
+          return;
+        }
+
+        const maxScrollLeft = rail.scrollWidth / 2;
+        if (maxScrollLeft <= rail.clientWidth + 1) {
+          stopHomeExperienceRailAutoScroll();
+          return;
+        }
+
+        if (!rail._homeRailPaused) {
+          const nextScrollLeft = rail.scrollLeft >= maxScrollLeft - 1 ? 0 : Math.min(rail.scrollLeft + getStepWidth(), maxScrollLeft);
+          rail.scrollTo({ left: nextScrollLeft, behavior: 'smooth' });
+        }
+      };
+
+      rail._homeRailPaused = false;
+      rail.onpointerenter = pause;
+      rail.onpointerdown = pause;
+      rail.onwheel = pause;
+      rail.ontouchstart = pause;
+
+      homeExperienceRailAutoScrollMode = 'mobile';
+      homeExperienceRailAutoScrollId = window.setInterval(step, 2400);
+      return;
+    }
 
     const speed = 0.35;
 
@@ -634,30 +686,26 @@
       homeExperienceRailAutoScrollId = window.requestAnimationFrame(tick);
     };
 
-    const pause = () => {
-      rail._homeRailPaused = true;
-      if (homeExperienceRailResumeTimer) {
-        clearTimeout(homeExperienceRailResumeTimer);
-      }
-      homeExperienceRailResumeTimer = setTimeout(() => {
-        rail._homeRailPaused = false;
-      }, 1100);
-    };
-
     rail._homeRailPaused = false;
     rail.onpointerenter = pause;
     rail.onpointerdown = pause;
     rail.onwheel = pause;
     rail.ontouchstart = pause;
 
+    homeExperienceRailAutoScrollMode = 'desktop';
     homeExperienceRailAutoScrollId = window.requestAnimationFrame(tick);
   }
 
   function stopHomeExperienceRailAutoScroll() {
     if (homeExperienceRailAutoScrollId) {
-      window.cancelAnimationFrame(homeExperienceRailAutoScrollId);
+      if (homeExperienceRailAutoScrollMode === 'mobile') {
+        window.clearInterval(homeExperienceRailAutoScrollId);
+      } else {
+        window.cancelAnimationFrame(homeExperienceRailAutoScrollId);
+      }
       homeExperienceRailAutoScrollId = null;
     }
+    homeExperienceRailAutoScrollMode = null;
     if (homeExperienceRailResumeTimer) {
       clearTimeout(homeExperienceRailResumeTimer);
       homeExperienceRailResumeTimer = null;
@@ -1434,6 +1482,8 @@
       setCarouselOffset();
       updateCarouselButtons();
     }
+
+    renderHomeExperienceRail();
   });
 </script>
 
@@ -2101,6 +2151,31 @@
     }
   }
 
+  @media (max-width: 768px) {
+    .featured-exp-right .featured-archives-box {
+      min-height: 420px;
+      padding: 1.7rem !important;
+    }
+
+    .featured-exp-right .featured-archives-box .archive-items-wrapper {
+      gap: 1.45rem;
+    }
+
+    .featured-exp-right .featured-archives-box .archive-item {
+      padding: 20px 16px;
+      gap: 16px;
+    }
+
+    .featured-exp-right .featured-archives-box .archive-item-badge {
+      min-width: 92px;
+      padding: 0.65rem 0.75rem;
+    }
+
+    .featured-exp-right .featured-archives-box .archive-item-desc {
+      font-size: clamp(0.8rem, 2.5vw, 1rem);
+    }
+  }
+
   /* Old styles retained for other sections */
 
   .experiences-page {
@@ -2386,6 +2461,22 @@
   @media (max-width: 768px) {
     .experience-cards-grid {
       grid-template-columns: 1fr;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .experience-cards-grid.is-horizontal {
+      gap: 18px;
+      padding-bottom: 0.5rem;
+      scroll-snap-type: x mandatory;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .experience-cards-grid.is-horizontal .experience-card {
+      flex: 0 0 calc(100vw - 2rem);
+      width: calc(100vw - 2rem);
+      scroll-snap-align: start;
     }
   }
 
@@ -2562,8 +2653,58 @@
     }
 
     .experience-cards-grid.is-horizontal .experience-card {
-      flex-basis: 82vw;
-      width: 82vw;
+      flex-basis: calc(100vw - 2rem);
+      width: calc(100vw - 2rem);
+    }
+
+    .experience-card {
+      min-height: 0;
+    }
+
+    .experience-card-top {
+      padding: 12px 14px 8px;
+      min-height: 52px;
+    }
+
+    .experience-card-body {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 12px 14px 8px;
+    }
+
+    .experience-card-photo {
+      width: 100%;
+      height: 200px;
+    }
+
+    .experience-card-copy {
+      min-height: 0;
+      padding: 0;
+      justify-content: flex-start;
+    }
+
+    .experience-card-quote-mark {
+      position: static;
+      font-size: 2rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .experience-card-quote {
+      text-align: justify;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      padding: 0;
+    }
+
+    .experience-card-footer {
+      padding: 10px 14px 14px;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .experience-card-details {
+      max-width: 100%;
+      text-align: left;
     }
   }
 
@@ -2698,6 +2839,7 @@
     color: var(--ink);
     line-height: 1.85;
     white-space: pre-wrap;
+    text-align: justify;
     max-width: 60ch;
   }
 
@@ -2741,6 +2883,38 @@
     .student-featured-layout.featured-experience { grid-template-columns: 1fr; }
     .student-featured-layout .student-featured-media { min-height: 280px; }
     .student-featured-layout .student-featured-copy { padding: 24px 22px 22px; }
+  }
+
+  @media (max-width: 768px) {
+    .student-featured-layout.featured-experience {
+      flex-basis: calc(100vw - 2rem);
+      width: calc(100vw - 2rem);
+      overflow: visible;
+    }
+
+    .student-featured-layout.featured-experience .featured-exp-content {
+      height: auto;
+      max-height: none;
+      overflow: visible;
+      padding: 22px 18px 20px;
+    }
+
+    .student-featured-layout.featured-experience .student-featured-body {
+      max-height: none;
+      overflow: visible;
+    }
+
+    .student-featured-layout.featured-experience .student-featured-body p {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: normal;
+      text-align: left;
+      line-height: 1.45;
+      margin-bottom: 0;
+    }
   }
 
   /* Override: keep featured article side-by-side and let image match text height

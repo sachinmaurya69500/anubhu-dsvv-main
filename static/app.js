@@ -587,6 +587,14 @@ function scheduleArchiveHeightSync() {
 }
 window.addEventListener('resize', scheduleArchiveHeightSync);
 
+const onDomReady = (callback) => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', callback);
+  } else {
+    callback();
+  }
+};
+
 async function trackVisitor() {
   try {
     const path = window.location.pathname || 'home';
@@ -618,11 +626,16 @@ async function trackVisitor() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initLanguageToggle();
-  startDynamicTranslationObserver();
-  trackVisitor();
+onDomReady(() => {
+  try {
+    initLanguageToggle();
+    startDynamicTranslationObserver();
+    trackVisitor();
+  } catch (err) {
+    console.warn('homepage init error', err);
+  }
   syncArchivePanelHeightWithFeaturedImage();
+  window.setTimeout(syncArchivePanelHeightWithFeaturedImage, 160);
   // Make sections below the featured overlay re-emerge from below
   try {
     const featured = document.querySelector('.student-featured-layout.featured-experience');
