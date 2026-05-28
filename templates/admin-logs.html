@@ -1,77 +1,30 @@
 {% extends "index.html" %}
 
-{% block title %}Visit Logs - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
+{% block title %}Upload Experience data - Anubhuti | Dev Sanskriti Vishwavidyalaya{% endblock %}
 
 {% block content %}
 <section class="content-section">
   <div class="section-header">
-    <h2>Visit Logs</h2>
-    <p class="subtitle">Track page visit activity and visitor history (no credentials shown)</p>
+    <h2>Upload Experience data</h2>
+    <p class="subtitle">Upload PDF experiences for admin review and approval</p>
   </div>
 
   {% if auth_role != 'admin' %}
     <div style="background: #fef2f2; padding: 20px; border-radius: 12px; border-left: 4px solid #dc3545; margin-bottom: 20px;">
-      <p style="margin: 0; color: #721c24; font-weight: 600;">Access denied. Only administrators can view visit logs.</p>
+      <p style="margin: 0; color: #721c24; font-weight: 600;">Access denied. Only administrators can view experience data.</p>
     </div>
   {% else %}
     <div class="logs-container">
-      <div class="logs-filter">
-        <input 
-          type="date" 
-          id="filter-date" 
-          onchange="filterByDate()"
-          style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;"
-        />
-        <input 
-          type="text" 
-          id="filter-email" 
-          placeholder="Filter by email"
-          onkeyup="filterLogs()"
-          style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; margin-left: 0.5rem;"
-        />
-        <select id="filter-action" onchange="filterLogs()" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; margin-left: 0.5rem;">
-          <option value="">All Actions</option>
-          <option value="page_visit">Page Visit</option>
-        </select>
-      </div>
-
-      <div class="logs-stats">
-        <div class="stat">
-          <span class="stat-label">Total Visitors</span>
-          <span class="stat-value" id="total-visitors">0</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Active/Engaged Users</span>
-          <span class="stat-value" id="engaged-users">0</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Bounce Rate</span>
-          <span class="stat-value" id="bounce-rate">0%</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Engagement Rate</span>
-          <span class="stat-value" id="engagement-rate">0%</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Pageviews</span>
-          <span class="stat-value" id="pageviews">0</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Conversion Rate</span>
-          <span class="stat-value" id="conversion-rate">0%</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Total Traffic</span>
-          <span class="stat-value" id="total-traffic">0</span>
+      <div class="upload-experience-panel" style="margin-bottom:16px; padding:12px; background:#fff; border:1px solid #eee; border-radius:8px;">
+        <h3 style="margin:0 0 8px 0;">Upload Experience PDFs</h3>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="upload-form-select" style="padding:8px; border:1px solid #ddd; border-radius:6px; min-width:220px;"></select>
+          <input id="upload-pdf-input" aria-label="Select PDF files" type="file" accept="application/pdf" multiple style="padding:6px;" />
+          <button id="upload-pdf-button" type="button" class="button primary button-sm">Upload PDFs</button>
+          <span id="upload-status" style="margin-left:8px; color: #666;"></span>
         </div>
       </div>
-
-      <div class="traffic-sources">
-        <h3>Traffic by Source</h3>
-        <div id="traffic-sources-list">
-          <!-- Loaded dynamically -->
-        </div>
-      </div>
+      <!-- Analytics and filters removed from Upload Experience data page per request -->
 
       <div id="logs-table" class="logs-table">
         <!-- Loaded dynamically -->
@@ -81,41 +34,358 @@
 </section>
 
 <script>
+  const adminLogsEscapeHtml = window.escapeHtml || ((value) =>
+    String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  );
+
+  const getActionColor = window.getActionColor || ((action) => {
+    const normalized = String(action || '').toLowerCase();
+    if (normalized.includes('login') || normalized.includes('submit')) return '#dff7e8';
+    if (normalized.includes('logout') || normalized.includes('delete')) return '#ffe3e3';
+    if (normalized.includes('admin') || normalized.includes('update')) return '#e8f1ff';
+    return '#f1f3f5';
+  });
+
   let allLogs = [];
   let analyticsData = {};
 
   (async function() {
     try {
-      const authRes = await fetch('/api/auth/me', { credentials: 'include' });
-      const auth = await authRes.json();
-      
-      if (auth.role !== 'admin') {
-        return;
+      let auth = {};
+      try {
+        const authRes = await fetch('/api/auth/me', { credentials: 'include' });
+        const ctype = authRes.headers.get('content-type') || '';
+        if (authRes.ok && ctype.includes('application/json')) {
+          auth = await authRes.json();
+        } else {
+          // not authenticated or returned HTML (redirect/login), treat as unauthenticated
+          auth = {};
+        }
+      } catch (e) {
+        console.warn('auth check failed', e);
       }
 
-      // Prefer the combined endpoint (logs + stats). Fallback to separate endpoints if unavailable.
-      let combinedRes = await fetch('/api/visit-logs/combined', { credentials: 'include' });
-      if (combinedRes.ok) {
-        const combined = await combinedRes.json();
-        allLogs = combined.logs || [];
-        analyticsData = combined.stats || {};
-        renderLogs(allLogs);
-        updateStats(allLogs, analyticsData);
-        renderTrafficSources(combined.trafficBySource || buildTrafficSources(allLogs));
-      } else {
+      // Preview modal implementation
+      function showPreviewModal(previewJson, callback) {
+        let existing = document.getElementById('pdf-preview-modal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'pdf-preview-modal';
+        modal.setAttribute('role','dialog');
+        modal.setAttribute('aria-modal','true');
+        modal.style.position = 'fixed';
+        modal.style.left = '0';
+        modal.style.top = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.background = 'rgba(0,0,0,0.5)';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.zIndex = '9999';
+
+        const box = document.createElement('div');
+        box.style.maxWidth = '900px';
+        box.style.width = '90%';
+        box.style.maxHeight = '80%';
+        box.style.overflow = 'auto';
+        box.style.background = '#fff';
+        box.style.borderRadius = '8px';
+        box.style.padding = '16px';
+
+        const title = document.createElement('h3');
+        title.textContent = 'Parsed Preview';
+        box.appendChild(title);
+
+        const summary = document.createElement('p');
+        const totalParsed = previewJson.results ? previewJson.results.reduce((acc, r) => acc + (Array.isArray(r.entries) ? r.entries.length : 0), 0) : 0;
+        summary.textContent = `Found ${totalParsed} entries across ${previewJson.results ? previewJson.results.length : 0} file(s).`;
+        box.appendChild(summary);
+
+          (previewJson.results || []).forEach((res, fileIdx) => {
+          const fileDiv = document.createElement('div');
+          fileDiv.style.padding = '8px 0';
+          fileDiv.style.borderTop = '1px solid #eee';
+          const fname = document.createElement('h4');
+          fname.textContent = res.filename || 'file';
+          fileDiv.appendChild(fname);
+
+          (res.entries || []).forEach((e, idx) => {
+            const card = document.createElement('div');
+            card.className = 'preview-entry';
+            card.style.border = '1px solid #f0f0f0';
+            card.style.padding = '8px';
+            card.style.margin = '8px 0';
+            card.dataset.fileIndex = fileIdx;
+            card.dataset.entryIndex = idx;
+
+            // header
+            const hdr = document.createElement('div');
+            hdr.style.fontWeight = '700';
+            hdr.style.marginBottom = '6px';
+            hdr.textContent = `${e.studentName || '(no name)'} — ${e.rollNumber || ''}`;
+            card.appendChild(hdr);
+
+            // editable fields: studentName, rollNumber, email, programme, organization, mentor, duration, summary
+            const makeInput = (label, name, value) => {
+              const wrapper = document.createElement('div');
+              wrapper.style.margin = '6px 0';
+              const lab = document.createElement('label');
+              lab.style.fontWeight = '600';
+              lab.style.display = 'block';
+              lab.style.fontSize = '0.9rem';
+              lab.textContent = label;
+              const inp = document.createElement(name === 'summary' ? 'textarea' : 'input');
+              inp.name = name;
+              inp.value = value || '';
+              inp.style.width = '100%';
+              inp.style.marginTop = '4px';
+              inp.style.padding = '6px';
+              inp.style.fontSize = '0.95rem';
+              if (name !== 'summary') inp.type = 'text';
+              if (name === 'summary') inp.rows = 4;
+              wrapper.appendChild(lab);
+              wrapper.appendChild(inp);
+              return wrapper;
+            };
+
+            card.appendChild(makeInput('Student name', 'studentName', e.studentName || ''));
+            card.appendChild(makeInput('Roll number', 'rollNumber', e.rollNumber || ''));
+            card.appendChild(makeInput('Email', 'email', e.email || ''));
+            card.appendChild(makeInput('Programme/Course', 'programme', e.programme || ''));
+            card.appendChild(makeInput('Organization', 'organization', e.organization || ''));
+            card.appendChild(makeInput('Mentor/Supervisor', 'mentor', e.mentor || ''));
+            card.appendChild(makeInput('Duration', 'duration', e.duration || ''));
+            card.appendChild(makeInput('Summary', 'summary', e.summary || ''));
+
+            fileDiv.appendChild(card);
+          });
+          box.appendChild(fileDiv);
+        });
+
+        const footer = document.createElement('div');
+        footer.style.display = 'flex';
+        footer.style.justifyContent = 'flex-end';
+        footer.style.gap = '8px';
+        footer.style.marginTop = '12px';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.className = 'button';
+        cancelBtn.type = 'button';
+        cancelBtn.addEventListener('click', () => {
+          modal.remove();
+          callback(false);
+        });
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Create Submissions';
+        confirmBtn.className = 'button primary';
+        confirmBtn.type = 'button';
+        confirmBtn.addEventListener('click', async () => {
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = 'Creating...';
+          try {
+            // collect overrides from the preview-entry cards in DOM order
+            const overrides = [];
+            const entries = box.querySelectorAll('.preview-entry');
+            entries.forEach(entry => {
+              const getVal = (name) => {
+                const el = entry.querySelector(`[name="${name}"]`);
+                return el ? el.value : '';
+              };
+              overrides.push({
+                studentName: getVal('studentName'),
+                rollNumber: getVal('rollNumber'),
+                email: getVal('email'),
+                programme: getVal('programme'),
+                organization: getVal('organization'),
+                mentor: getVal('mentor'),
+                duration: getVal('duration'),
+                summary: getVal('summary'),
+              });
+            });
+            modal.remove();
+            callback(true, overrides);
+          } catch (e) {
+            console.error(e);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Create Submissions';
+          }
+        });
+
+        footer.appendChild(cancelBtn);
+        footer.appendChild(confirmBtn);
+        box.appendChild(footer);
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+      }
         // Fallback for older deployments
-        const analyticsRes = await fetch('/api/analytics/visitors', { credentials: 'include' });
-        analyticsData = await analyticsRes.json();
-        
-        const logsRes = await fetch('/api/visit-logs', { credentials: 'include' });
-        allLogs = await logsRes.json();
+        try {
+          const analyticsRes = await fetch('/api/analytics/visitors', { credentials: 'include' });
+          const ctypeA = analyticsRes.headers.get('content-type') || '';
+          if (analyticsRes.ok && ctypeA.includes('application/json')) {
+            analyticsData = await analyticsRes.json();
+          } else {
+            analyticsData = {};
+          }
+        } catch (e) {
+          analyticsData = {};
+        }
+
+        try {
+          const logsRes = await fetch('/api/visit-logs', { credentials: 'include' });
+          const ctypeL = logsRes.headers.get('content-type') || '';
+          if (logsRes.ok && ctypeL.includes('application/json')) {
+            allLogs = await logsRes.json();
+          } else {
+            allLogs = [];
+          }
+        } catch (e) {
+          allLogs = [];
+        }
         
         renderLogs(allLogs);
         updateStats(allLogs, analyticsData);
         renderTrafficSources(analyticsData.trafficBySource || buildTrafficSources(allLogs));
+      // Populate forms dropdown for PDF uploads (try admin endpoint, fallback to public)
+      const sel = document.getElementById('upload-form-select');
+      try {
+        let formsRes = await fetch('/api/admin/forms', { credentials: 'include' });
+        if (!formsRes.ok) {
+          // fallback to public forms if admin endpoint is not accessible
+          formsRes = await fetch('/api/forms');
+        }
+        if (formsRes.ok) {
+          const forms = await formsRes.json();
+          sel.innerHTML = '';
+          (forms || []).forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f._id || f.id || '';
+            const title = f.title || 'Untitled';
+            const dl = f.deadline ? new Date(f.deadline).toLocaleDateString() : 'No deadline';
+            opt.textContent = `${title} (${dl})`;
+            sel.appendChild(opt);
+          });
+          if ((forms || []).length === 0) {
+            sel.innerHTML = '<option value="">(no forms available)</option>';
+          }
+        } else {
+          sel.innerHTML = '<option value="">(no forms available)</option>';
+        }
+      } catch (e) {
+        console.warn('Could not load forms for upload:', e);
+        sel.innerHTML = '<option value="">(no forms available)</option>';
       }
+
+      // If no value is selected but options exist, auto-select the first one
+      try {
+        if (!sel.value && sel.options && sel.options.length > 0) {
+          sel.selectedIndex = 0;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Upload button handler - preview via debug parser, then confirm to create submissions
+      console.debug('Setting up upload button handler');
+      const uploadButton = document.getElementById('upload-pdf-button');
+      uploadButton.addEventListener('click', async () => {
+        console.debug('Upload button clicked');
+        uploadButton.disabled = true;
+        uploadButton.setAttribute('aria-busy', 'true');
+        const input = document.getElementById('upload-pdf-input');
+        const status = document.getElementById('upload-status');
+        const formId = sel.value;
+        if (!formId) { 
+          // help the user select a form
+          try { sel.focus(); } catch(e){}
+          uploadButton.disabled = false; 
+          return; 
+        }
+        if (!input.files || input.files.length === 0) { 
+          // open the file picker to assist the user
+          try { input.click(); } catch(e){}
+          uploadButton.disabled = false; 
+          return; 
+        }
+        status.style.color = '#333';
+        status.textContent = 'Parsing PDF(s) for preview...';
+
+        // Build FormData for preview
+        const fdPreview = new FormData();
+        for (let i = 0; i < input.files.length; i++) fdPreview.append('pdf', input.files[i]);
+
+        try {
+          // First call debug parse endpoint to show a preview
+          const previewRes = await fetch('/api/debug/parse-pdf', { method: 'POST', credentials: 'include', body: fdPreview });
+          let previewJson = null;
+          try { previewJson = await previewRes.json(); } catch (e) { previewJson = null; }
+          if (!previewRes.ok || !previewJson) {
+            const msg = (previewJson && previewJson.message) ? previewJson.message : `Preview failed (HTTP ${previewRes.status})`;
+            status.style.color = '#c0392b';
+            status.textContent = 'Preview failed: ' + msg;
+            console.error('Preview failed', previewRes.status, previewJson);
+            uploadButton.disabled = false;
+            uploadButton.removeAttribute('aria-busy');
+            return;
+          }
+
+          // Show preview modal and get overrides; the modal will call our callback with (confirmed, overrides)
+          showPreviewModal(previewJson, async (confirmed, overrides) => {
+            if (!confirmed) {
+              status.style.color = '#666';
+              status.textContent = 'Upload cancelled.';
+              setTimeout(() => status.textContent = '', 3000);
+              uploadButton.disabled = false;
+              uploadButton.removeAttribute('aria-busy');
+              return;
+            }
+
+            // If confirmed, send files and overrides to admin upload endpoint which will insert pending submissions
+            status.style.color = '#333';
+            status.textContent = 'Uploading and creating submissions...';
+            const fdUpload = new FormData();
+            for (let i = 0; i < input.files.length; i++) fdUpload.append('pdf', input.files[i]);
+            try {
+              fdUpload.append('overrides', JSON.stringify(overrides || []));
+            } catch (e) {
+              console.warn('Could not attach overrides', e);
+            }
+
+            const res = await fetch(`/api/admin/forms/${encodeURIComponent(formId)}/upload-pdf`, { method: 'POST', credentials: 'include', body: fdUpload });
+            let json;
+            try { json = await res.json(); } catch(e) { json = null; }
+            if (!res.ok) {
+              const msg = (json && json.message) ? json.message : `HTTP ${res.status}`;
+              status.style.color = '#c0392b';
+              status.textContent = 'Upload failed: ' + msg;
+              console.error('Upload failed', res.status, json);
+              uploadButton.disabled = false;
+              uploadButton.removeAttribute('aria-busy');
+              return;
+            }
+            status.style.color = '#1e7e34';
+            status.textContent = `Created ${json.count || 0} submissions.`;
+            uploadButton.disabled = false;
+            uploadButton.removeAttribute('aria-busy');
+          });
+        } catch (err) {
+          console.error('Upload error:', err);
+          status.style.color = '#c0392b';
+          status.textContent = 'Upload failed: ' + (err.message || String(err));
+          uploadButton.disabled = false;
+          uploadButton.removeAttribute('aria-busy');
+        }
+        setTimeout(() => status.textContent = '', 6000);
+      });
     } catch (err) {
-      console.error('Error loading visit logs:', err);
+      console.error('Error loading experience data:', err);
       document.getElementById('logs-table').innerHTML = '<p class="empty-state">Error loading logs.</p>';
     }
   })();
@@ -124,7 +394,7 @@
     const container = document.getElementById('logs-table');
     
     if (!logs || logs.length === 0) {
-      container.innerHTML = '<p class="empty-state">No visit logs found.</p>';
+      container.innerHTML = '<p class="empty-state">No experience data found.</p>';
       return;
     }
 
@@ -146,18 +416,18 @@
           ${logs.map(log => `
             <tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 0.75rem; font-size: 0.9rem;">${formatTimestamp(log.timestamp)}</td>
-              <td style="padding: 0.75rem; font-size: 0.85rem; color: #666;">${escapeHtml(log.visitorId || 'N/A')}</td>
-              <td style="padding: 0.75rem;" data-no-auto-translate="true">${escapeHtml(maskEmail(log.userEmail))}</td>
+              <td style="padding: 0.75rem; font-size: 0.85rem; color: #666;">${adminLogsEscapeHtml(log.visitorId || 'N/A')}</td>
+              <td style="padding: 0.75rem;" data-no-auto-translate="true">${adminLogsEscapeHtml(maskEmail(log.userEmail))}</td>
               <td style="padding: 0.75rem;">
                 <span style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 4px; 
                   background: ${getActionColor(log.action)}; font-size: 0.85rem; font-weight: 600;">
-                  ${escapeHtml(log.action?.toUpperCase() || 'UNKNOWN')}
+                  ${adminLogsEscapeHtml(log.action?.toUpperCase() || 'UNKNOWN')}
                 </span>
               </td>
-              <td style="padding: 0.75rem; font-size: 0.9rem;">${escapeHtml(log.page || log.url || 'N/A')}</td>
-              <td style="padding: 0.75rem; font-size: 0.9rem;">${escapeHtml(log.referrer || 'Direct')}</td>
-              <td style="padding: 0.75rem; font-size: 0.85rem; color: #555; max-width: 280px;">${escapeHtml(log.userAgent || 'N/A')}</td>
-              <td style="padding: 0.75rem; font-size: 0.85rem; color: #999;">${escapeHtml(log.ipAddress || 'N/A')}</td>
+              <td style="padding: 0.75rem; font-size: 0.9rem;">${adminLogsEscapeHtml(log.page || log.url || 'N/A')}</td>
+              <td style="padding: 0.75rem; font-size: 0.9rem;">${adminLogsEscapeHtml(log.referrer || 'Direct')}</td>
+              <td style="padding: 0.75rem; font-size: 0.85rem; color: #555; max-width: 280px;">${adminLogsEscapeHtml(log.userAgent || 'N/A')}</td>
+              <td style="padding: 0.75rem; font-size: 0.85rem; color: #999;">${adminLogsEscapeHtml(log.ipAddress || 'N/A')}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -168,8 +438,11 @@
   }
 
   function filterLogs() {
-    const emailFilter = document.getElementById('filter-email').value.toLowerCase();
-    const actionFilter = document.getElementById('filter-action').value;
+    const emailEl = document.getElementById('filter-email');
+    const actionEl = document.getElementById('filter-action');
+    if (!emailEl || !actionEl) return; // filters removed from UI
+    const emailFilter = emailEl.value.toLowerCase();
+    const actionFilter = actionEl.value;
     
     const filtered = allLogs.filter(log => {
       const emailMatch = !emailFilter || (log.userEmail || '').toLowerCase().includes(emailFilter);
@@ -183,7 +456,9 @@
   }
 
   function filterByDate() {
-    const dateStr = document.getElementById('filter-date').value;
+    const dateEl = document.getElementById('filter-date');
+    if (!dateEl) return; // date filter removed from UI
+    const dateStr = dateEl.value;
     if (!dateStr) {
       renderLogs(allLogs);
       updateStats(allLogs, analyticsData);
@@ -309,7 +584,7 @@
 
   function renderTrafficSources(sources) {
     const container = document.getElementById('traffic-sources-list');
-    
+    if (!container) return; // container removed from UI
     if (!sources || sources.length === 0) {
       container.innerHTML = '<p>No traffic source data available.</p>';
       return;
@@ -323,7 +598,7 @@
       return `
         <div class="traffic-source">
           <div style="display:flex; align-items:center; gap:1rem; flex:1;">
-            <div style="min-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(source._id || 'Direct')}</div>
+            <div style="min-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${adminLogsEscapeHtml(source._id || 'Direct')}</div>
             <div class="bar" role="presentation" aria-hidden="true" style="flex:1; width:${pct}%; max-width:100%;"></div>
           </div>
           <span class="source-count">${count}</span>
@@ -334,6 +609,7 @@
     container.innerHTML = html;
   }
 
+</script>
 <style>
   .logs-container {
     max-width: 1200px;

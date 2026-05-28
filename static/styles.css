@@ -4489,14 +4489,15 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .barc-announcement-nested {
-    display: block;
+    display: inline-block;
+    min-width: max-content;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-    animation: none;
+    text-overflow: clip;
+    animation: marqueeRightToLeft var(--marquee-duration-mobile, 16s) linear infinite;
     font-size: 0.9rem;
     line-height: 1.2;
-    padding: 0;
+    padding: 0 0.75rem;
   }
 
   .featured-exp-image-box {
@@ -4688,6 +4689,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .site-header {
+    display: flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
@@ -4695,13 +4698,21 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .brand-block {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
     flex: 1 1 auto;
     min-width: 0;
     gap: 0.65rem;
   }
 
+  .brand-home-link {
+    flex: 0 0 auto;
+  }
+
   .brand-text-stack {
-    display: flex;
+    display: flex !important;
+    flex-direction: column !important;
     min-width: 0;
     gap: 0.1rem;
   }
@@ -4715,6 +4726,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .mobile-nav-toggle {
+    flex: 0 0 auto;
     order: 2;
     margin-left: auto;
   }
@@ -4808,12 +4820,14 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .barc-announcement-nested {
+    display: inline-block;
+    min-width: max-content;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-    animation: none;
+    text-overflow: clip;
+    animation: marqueeRightToLeft var(--marquee-duration-mobile, 16s) linear infinite;
     line-height: 1.2;
-    padding: 0;
+    padding: 0 0.75rem;
   }
 }
 
@@ -5174,5 +5188,69 @@ body { overflow-x: hidden; }
   /* If you want the overlay narrower on desktop, uncomment below and adjust width */
   /* .student-featured-layout.featured-experience .featured-exp-content { width: 50%; max-width: 640px; } */
 }
+
+  /* Final mobile header override: keep logo, brand text, and menu icon on one line */
+  @media (max-width: 992px) {
+    .site-header {
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 0.5rem !important;
+    }
+
+    .brand-block {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      min-width: 0 !important;
+      flex: 1 1 auto !important;
+      gap: 0.55rem !important;
+    }
+
+    .brand-home-link {
+      flex: 0 0 auto !important;
+    }
+
+    .brand-text-stack {
+      display: flex !important;
+      flex-direction: column !important;
+      min-width: 0 !important;
+      visibility: visible !important;
+    }
+
+    .brand-main,
+    .brand-subtitle {
+      display: block !important;
+      visibility: visible !important;
+      white-space: nowrap;
+    }
+
+    .brand-main {
+      height: auto !important;
+      overflow: visible !important;
+      font-size: clamp(1rem, 3.8vw, 1.55rem) !important;
+    }
+
+    .brand-subtitle {
+      font-size: clamp(0.7rem, 2.4vw, 0.95rem) !important;
+      line-height: 1.1 !important;
+    }
+
+    .mobile-nav-toggle {
+      display: inline-flex !important;
+      flex: 0 0 auto !important;
+      margin-left: auto !important;
+    }
+
+    .site-nav {
+      display: none !important;
+    }
+
+    body.mobile-nav-open .site-nav {
+      display: flex !important;
+    }
+  }
 
 

@@ -75,10 +75,17 @@
       // Load dashboard summary
       const summaryContainer = document.getElementById('dashboard-summary');
       if (auth.user) {
+        const isStudent = auth.role === 'student';
+        const headline = isStudent
+          ? `Welcome, ${escapeHtml(auth.user.name || auth.user.email.split('@')[0])}! 👋`
+          : 'Student Dashboard';
+        const summaryText = isStudent
+          ? 'You are viewing your own submissions. Submit your experiences, review archives, and track your entries.'
+          : 'You are viewing student submissions. Submit your experiences, review archives, and track your own entries.';
         summaryContainer.innerHTML = `
           <div class="card" style="background: var(--gradient-primary); border: 1px solid var(--line);">
-            <h3 style="margin-top: 0; color: #ffffff; font-size: 1.5rem;">Welcome, ${escapeHtml(auth.user.name || auth.user.email.split('@')[0])}! 👋</h3>
-            <p style="margin: 10px 0 0; font-size: 1rem; color: #ffffff;">You are logged in as a student. Submit your experiences, review archives, and track your submissions.</p>
+            <h3 style="margin-top: 0; color: var(--brand); font-size: 1.5rem;">${headline}</h3>
+            <p style="margin: 10px 0 0; font-size: 1rem; color: #000000;">${summaryText}</p>
           </div>
         `;
       }
@@ -111,16 +118,9 @@
       }
 
       // Load user's submissions
-      const subsRes = await fetch('/api/submissions?submittedBy=' + (auth.user?.email || 'demo@dsvv.edu'));
+      const submissionsUrl = '/api/submissions?submittedBy=' + encodeURIComponent(auth.user?.email || '');
+      const subsRes = await fetch(submissionsUrl);
       let submissions = await subsRes.json();
-      
-      // Add dummy submissions if needed
-      if (!submissions || submissions.length === 0) {
-        submissions = [
-          { id: 'sub1', studentName: auth.user?.name || 'Your Name', organization: 'Tech Corp India', summary: 'My internship experience at Tech Corp was transformative. I worked on real-world projects and gained practical knowledge that complemented my studies.', status: 'approved', submittedAt: '2025-05-15' },
-          { id: 'sub2', studentName: auth.user?.name || 'Your Name', organization: 'Marketing Solutions Ltd', summary: 'I developed digital campaign strategies and learned about consumer behavior and market dynamics. This experience solidified my career goals.', status: 'pending', submittedAt: '2025-06-20' }
-        ];
-      }
       
       const subsList = document.getElementById('submissions-list');
       if (submissions && submissions.length > 0) {

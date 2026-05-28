@@ -600,6 +600,9 @@
     rail.classList.toggle('is-horizontal', shouldScrollHorizontally);
     rail.innerHTML = shouldScrollHorizontally ? `${cardsHtml}${cardsHtml}` : cardsHtml;
 
+    // ensure sizing so desktop shows three cards at a time
+    try { applyExperienceCardWidths(); } catch (e) { /* ignore */ }
+
     if (shouldScrollHorizontally) {
       startHomeExperienceRailAutoScroll();
     } else {
@@ -731,29 +734,24 @@
     const imageSrc = getHomeExperienceImageSrc(item);
     const quote = makeHomePreview(item.summary || item.summaryPreview || '', 180);
     const academicLine = [item.programme, item.duration].filter(Boolean).join(' | ');
-    const locationText = item.organization || 'Location unavailable';
 
     return `
       <article class="experience-card ${theme}">
-        <div class="experience-card-top">
-          <div class="experience-card-logo">
-            <img class="brand-logo" src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="Dev Sanskriti Vishwavidyalaya logo" />
-          </div>
+        <div class="experience-card-header">
+          <div class="experience-card-kicker">Our</div>
+          <div class="experience-card-title">Student's Experience</div>
+        </div>
+        <div class="experience-card-avatar-wrap">
+          ${renderHomeCardMedia(imageSrc, item.studentName)}
         </div>
         <div class="experience-card-body">
-          <div class="experience-card-photo">
-            ${renderHomeCardMedia(imageSrc, item.studentName)}
-          </div>
-          <div class="experience-card-copy">
-            <div class="experience-card-quote-mark">&ldquo;</div>
+          <div class="experience-card-name">${__homeEscapeHtml(item.studentName)}</div>
+          <div class="experience-card-role">${__homeEscapeHtml(item.organization || 'Student')}</div>
+          <div class="experience-card-stars" aria-hidden="true">★★★★★</div>
+          <div class="experience-card-quote-wrap">
+            <span class="experience-card-quote-mark experience-card-quote-mark--left">&ldquo;</span>
             <p class="experience-card-quote">${__homeEscapeHtml(quote)}</p>
-          </div>
-        </div>
-        <div class="experience-card-footer">
-          <div>
-            <div class="experience-card-label">Student details</div>
-            <div class="experience-card-name">${__homeEscapeHtml(item.studentName)}</div>
-            <div class="experience-card-role">${__homeEscapeHtml(item.organization || 'Student')}</div>
+            <span class="experience-card-quote-mark experience-card-quote-mark--right">&rdquo;</span>
           </div>
           <div class="experience-card-details">${__homeEscapeHtml(academicLine || item.organization || '')}</div>
         </div>
@@ -807,7 +805,20 @@
   }
 
   function renderHomeCardMedia(src, altText) {
-    return `<img src="${__homeEscapeHtml(src)}" alt="${__homeEscapeHtml(altText || 'Experience photo')}" onerror="this.onerror=null;this.src='/assets/Dev_Sanskriti_Vishwavidyalaya.png'" />`;
+    const escapedSrc = __homeEscapeHtml(src);
+    const escapedAlt = __homeEscapeHtml(altText || 'Experience photo');
+    const initials = String(altText || '')
+      .split(' ')
+      .map((part) => part[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'EX';
+    return `
+      <div class="experience-card-avatar">
+        <img src="${escapedSrc}" alt="${escapedAlt}" onerror="this.onerror=null;this.remove();this.parentElement.classList.add('has-initials');this.parentElement.textContent='${initials.replaceAll("'", '&#39;')}';" />
+      </div>
+    `;
   }
 
   function renderFeaturedExperienceBox() {
@@ -1108,6 +1119,58 @@
     if (window.innerWidth < 768) return 1;
     if (window.innerWidth < 1024) return 2;
     return 3;
+  }
+
+  // Ensure experience cards sized so desktop shows 3 at a time
+  function applyExperienceCardWidths() {
+    const GAP = 32; // larger, more significant gap between cards
+    const MIN_CARD = 240; // allow smaller min so three can fit
+    const MAX_CARD = 900; // generous max if needed
+    const container = document.getElementById('home-experience-rail');
+    if (!container) return;
+
+    const ww = window.innerWidth || document.documentElement.clientWidth;
+    let visible = 3;
+    if (ww < 700) visible = 1;
+    else if (ww < 1100) visible = 2;
+
+    // compute available width inside container (account for padding)
+    const cs = getComputedStyle(container);
+    const padLeft = parseFloat(cs.paddingLeft) || 0;
+    const padRight = parseFloat(cs.paddingRight) || 0;
+    const available = Math.max(0, container.clientWidth - padLeft - padRight);
+
+    const totalGap = Math.max(0, (visible - 1) * GAP);
+    let cardWidth = Math.floor((available - totalGap) / visible);
+    // clamp but avoid forcing overflow — prefer to fit visible count
+    cardWidth = Math.max(Math.min(cardWidth, MAX_CARD), MIN_CARD);
+
+    Array.from(container.querySelectorAll('.experience-card')).forEach(c => {
+      const finalWidth = cardWidth;
+      // use flex basis to keep exact width and avoid inline-block spacing issues
+      c.style.width = finalWidth + 'px';
+      c.style.minWidth = finalWidth + 'px';
+      c.style.maxWidth = finalWidth + 'px';
+      c.style.flex = `0 0 ${finalWidth}px`;
+      c.style.display = 'block';
+      c.style.boxSizing = 'border-box';
+    });
+
+    // Set container to a single-row flex track with gap and hide horizontal scrollbar
+    container.style.display = 'flex';
+    container.style.flexWrap = 'nowrap';
+    container.style.gap = GAP + 'px';
+    container.style.overflowX = 'hidden';
+    container.style.justifyContent = 'flex-start';
+
+    // re-run sizing after images load (catch late image paints)
+    Array.from(container.querySelectorAll('img')).forEach(img => {
+      if (!img.complete) {
+        img.addEventListener('load', applyExperienceCardWidths, { once: true });
+        img.addEventListener('error', applyExperienceCardWidths, { once: true });
+      }
+    });
+    setTimeout(applyExperienceCardWidths, 700);
   }
 
   function toggleTestimonialDetails(submissionId) {
@@ -1937,6 +2000,20 @@
     display: block;
   }
 
+  /* Ensure card content isn't clipped: images and long text wrap */
+  #home-experience-rail .experience-card,
+  #home-experience-rail .experience-card * {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  #home-experience-rail .experience-card-copy,
+  #home-experience-rail .experience-card-quote {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
   .experience-card-photo-label {
     position: absolute;
     bottom: 0;
@@ -2709,33 +2786,33 @@
   }
 
   .experience-card.theme-navy {
-    --theme-header: #233c60;
-    --theme-body: #ffca0a;
-    --theme-footer: #233c60;
-    --theme-accent: #ffdd33;
-    --theme-ink: #19263a;
-    --theme-name: #ffe863;
-    --theme-subtext: rgba(255, 255, 255, 0.95);
+    --theme-header: linear-gradient(180deg, #0a59c7 0%, #003d99 100%);
+    --theme-body: #ffffff;
+    --theme-footer: #ffffff;
+    --theme-accent: #ffd700;
+    --theme-ink: #1f2937;
+    --theme-name: #1f2937;
+    --theme-subtext: rgba(31, 41, 55, 0.72);
   }
 
   .experience-card.theme-teal {
-    --theme-header: #20406b;
-    --theme-body: #1f3f68;
-    --theme-footer: #20406b;
-    --theme-accent: #ffd455;
-    --theme-ink: #f7fbff;
-    --theme-name: #ffe15d;
-    --theme-subtext: rgba(255, 255, 255, 0.9);
+    --theme-header: linear-gradient(180deg, #1766d8 0%, #003d99 100%);
+    --theme-body: #ffffff;
+    --theme-footer: #ffffff;
+    --theme-accent: #ffd700;
+    --theme-ink: #1f2937;
+    --theme-name: #1f2937;
+    --theme-subtext: rgba(31, 41, 55, 0.72);
   }
 
   .experience-card.theme-forest {
-    --theme-header: #06291d;
-    --theme-body: #0a766f;
-    --theme-footer: #06291d;
-    --theme-accent: #f0d74d;
-    --theme-ink: #edf9f7;
-    --theme-name: #ffffff;
-    --theme-subtext: rgba(255, 255, 255, 0.86);
+    --theme-header: linear-gradient(180deg, #0051cc 0%, #003d99 100%);
+    --theme-body: #ffffff;
+    --theme-footer: #ffffff;
+    --theme-accent: #ffd700;
+    --theme-ink: #1f2937;
+    --theme-name: #1f2937;
+    --theme-subtext: rgba(31, 41, 55, 0.72);
   }
 
   .experience-dots {
@@ -2952,6 +3029,234 @@
     .experience-card-photo { width: 104px; height: 108px; }
     .experience-card-name { font-size: 1.05rem; }
     .experience-card-details { max-width: 52%; font-size: 0.7rem; }
+  }
+
+  #home-experience-rail.experience-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 26px;
+    max-width: 1220px;
+  }
+
+  #home-experience-rail .experience-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 418px;
+    border-radius: 0 !important;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.12);
+  }
+
+  #home-experience-rail .experience-card-header {
+    position: relative;
+    min-height: 154px;
+    padding: 20px 20px 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    color: #fff;
+  }
+
+  #home-experience-rail .experience-card-header::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 44px;
+    background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.96) 100%);
+  }
+
+  #home-experience-rail .experience-card-kicker {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 1.42rem;
+    line-height: 1;
+    color: rgba(255,255,255,0.92);
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+  }
+
+  #home-experience-rail .experience-card-title {
+    position: relative;
+    z-index: 1;
+    font-size: clamp(2.1rem, 2.9vw, 3rem);
+    line-height: 0.92;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.08);
+  }
+
+  #home-experience-rail .experience-card-avatar-wrap {
+    margin-top: -50px;
+    display: flex;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  #home-experience-rail .experience-card-avatar {
+    width: 108px;
+    height: 114px;
+    background: #ffffff;
+    border: 4px solid rgba(255,255,255,0.95);
+    clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0% 50%);
+    box-shadow: 0 12px 22px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #1f2937;
+    font-weight: 800;
+    font-size: 0.95rem;
+    padding: 0.35rem;
+  }
+
+  #home-experience-rail .experience-card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    clip-path: inherit;
+  }
+
+  #home-experience-rail .experience-card-avatar.has-initials {
+    background: linear-gradient(180deg, #ffffff, #eef2f7);
+  }
+
+  #home-experience-rail .experience-card-body {
+    position: relative;
+    margin-top: 0;
+    padding: 16px 26px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 5px;
+    background: #ffffff;
+    flex: 1;
+  }
+
+  #home-experience-rail .experience-card-name {
+    font-size: 1.28rem;
+    line-height: 1;
+    font-weight: 900;
+    color: #2b2f36;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  #home-experience-rail .experience-card-role {
+    margin-top: 0;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: rgba(43, 47, 54, 0.72);
+  }
+
+  #home-experience-rail .experience-card-stars {
+    color: var(--accent);
+    letter-spacing: 0.13em;
+    font-size: 0.8rem;
+    margin-top: 1px;
+  }
+
+  #home-experience-rail .experience-card-quote-wrap {
+    position: relative;
+    width: 100%;
+    margin-top: 6px;
+    padding: 0 16px;
+  }
+
+  #home-experience-rail .experience-card-quote {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: rgba(34, 39, 46, 0.76);
+    text-align: center;
+    font-style: normal;
+  }
+
+  #home-experience-rail .experience-card-quote-mark {
+    position: absolute;
+    top: -2px;
+    font-size: 2rem;
+    line-height: 1;
+    color: rgba(0, 61, 153, 0.12);
+    font-weight: 700;
+  }
+
+  #home-experience-rail .experience-card-quote-mark--left { left: 0; }
+  #home-experience-rail .experience-card-quote-mark--right { right: 0; }
+
+  #home-experience-rail .experience-card-details {
+    max-width: 100%;
+    margin-top: auto;
+    padding-top: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(43, 47, 54, 0.62);
+    text-align: center;
+  }
+
+  #home-experience-rail .experience-card.theme-navy .experience-card-header {
+    background: linear-gradient(180deg, #1c6fe8 0%, #003d99 100%);
+  }
+
+  #home-experience-rail .experience-card.theme-teal .experience-card-header {
+    background: linear-gradient(180deg, #1568de 0%, #003d99 100%);
+  }
+
+  #home-experience-rail .experience-card.theme-forest .experience-card-header {
+    background: linear-gradient(180deg, #0f5dd1 0%, #003d99 100%);
+  }
+
+  @media (max-width: 1024px) {
+    #home-experience-rail.experience-cards-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    #home-experience-rail .experience-card {
+      min-height: 0;
+    }
+
+    #home-experience-rail .experience-card-header {
+      min-height: 140px;
+      padding: 16px 16px 46px;
+    }
+
+    #home-experience-rail .experience-card-kicker {
+      font-size: 1.25rem;
+    }
+
+    #home-experience-rail .experience-card-title {
+      font-size: 1.9rem;
+    }
+
+    #home-experience-rail .experience-card-avatar {
+      width: 92px;
+      height: 98px;
+    }
+
+    #home-experience-rail .experience-card-body {
+      padding: 14px 18px 18px;
+    }
+
+    #home-experience-rail .experience-card-name {
+      font-size: 1.05rem;
+    }
+
+    #home-experience-rail .experience-card-quote {
+      font-size: 0.72rem;
+    }
   }
 </style>
 <script>

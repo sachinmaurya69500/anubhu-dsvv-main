@@ -18,7 +18,7 @@
     <div class="admin-nav">
       <a href="/admin" class="tab active">Dashboard</a>
       <a href="/admin/verify" class="tab">Verify Submissions</a>
-      <a href="/admin/logs" class="tab">Visit Logs</a>
+      <a href="/admin/logs" class="tab">Upload Experience data</a>
       <a href="/admin/users" class="tab">Manage User Access</a>
     </div>
 
@@ -59,25 +59,71 @@
 </section>
 
 <style>
+  /* Single-row horizontal list: desktop shows 3 visible cards, medium 2, mobile 1 */
   #forms-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    display: flex;
+    flex-wrap: nowrap; /* keep a single row */
     gap: 24px;
     margin-top: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    align-items: stretch;
   }
 
-  @media (max-width: 900px) {
-    #forms-list {
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
+  /* Desktop: three cards visible */
+  #forms-list .form-card { flex: 0 0 calc((100% - 48px) / 3); max-width: calc((100% - 48px) / 3); }
+
+  @media (max-width: 1100px) {
+    /* Medium: two cards visible */
+    #forms-list .form-card { flex: 0 0 calc((100% - 24px) / 2); max-width: calc((100% - 24px) / 2); }
+  }
+
+  @media (max-width: 700px) {
+    /* Mobile: single card per view */
+    #forms-list { gap: 16px; }
+    #forms-list .form-card { flex: 0 0 100%; max-width: 100%; }
+  }
+</style>
+<!-- Force single-row behavior for forms lists to prevent wrapping -->
+<style>
+  /* Target common container variants used across pages */
+  .forms-table, .forms-list, #forms-list, .cards-grid {
+    /* Use block+nowrap to avoid flex/grid wrapping edge cases */
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    padding-bottom: 6px !important;
+  }
+
+  /* Ensure cards remain on a single row by fixing their base size */
+  .forms-table .form-card, .forms-list .form-card, #forms-list .form-card, .cards-grid .form-card {
+    display: inline-block !important;
+    vertical-align: top !important;
+    min-width: 320px !important;
+    width: 320px !important;
+    max-width: 320px !important;
+    margin-right: 24px !important;
+    white-space: normal !important;
+  }
+
+  @media (max-width: 1100px) {
+    .forms-table .form-card, .forms-list .form-card, #forms-list .form-card, .cards-grid .form-card {
+      width: 420px !important;
+      min-width: 420px !important;
+      max-width: 420px !important;
     }
   }
 
-  @media (max-width: 600px) {
-    #forms-list {
-      grid-template-columns: 1fr;
-      gap: 16px;
+  @media (max-width: 700px) {
+    .forms-table .form-card, .forms-list .form-card, #forms-list .form-card, .cards-grid .form-card {
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      margin-right: 0 !important;
     }
+    .forms-table, .forms-list, #forms-list, .cards-grid { gap: 16px !important; }
   }
 </style>
 
@@ -155,17 +201,27 @@
       const formsList = document.getElementById('forms-list');
       if (forms.length > 0) {
         formsList.innerHTML = forms.map(form => {
+          const formIdStr = String(form._id || form.id || '');
+          const formSubmissionCount = Array.isArray(submissions)
+            ? submissions.filter(s => String(s.formId || '') === formIdStr).length
+            : (form.submissionCount || 0);
           const createdDate = form.createdAt ? new Date(form.createdAt).toLocaleDateString() : 'N/A';
           const deadlineDate = form.deadline ? new Date(form.deadline).toLocaleDateString() : 'N/A';
+          const isClosed = form.deadline ? new Date(form.deadline) < new Date() : false;
           const statusColor = form.status === 'active' ? '#28a745' : '#dc3545';
           const statusBg = form.status === 'active' ? '#d4edda' : '#f8d7da';
+          const closedColor = '#6c757d';
+          const closedBg = '#e2e3e5';
           return `
           <div class="card form-card" style="padding: 24px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; min-height: 520px; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
               <div style="flex: 1; margin-right: 12px;">
                 <h4 style="margin: 0 0 8px; color: #1e4f8a; font-size: 1.1rem;">${escapeHtml(form.title)}</h4>
-                <div style="display: inline-block; padding: 6px 12px; background: ${statusBg}; color: ${statusColor}; font-size: 0.8rem; font-weight: 600; border-radius: 4px; text-transform: uppercase;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                  <div style="display: inline-block; padding: 6px 12px; background: ${statusBg}; color: ${statusColor}; font-size: 0.8rem; font-weight: 600; border-radius: 4px; text-transform: uppercase;">
                   ${form.status ? form.status.toUpperCase() : 'ACTIVE'}
+                  </div>
+                  ${isClosed ? `<div style="display: inline-block; padding: 6px 12px; background: ${closedBg}; color: ${closedColor}; font-size: 0.8rem; font-weight: 600; border-radius: 4px; text-transform: uppercase;">CLOSED</div>` : ''}
                 </div>
               </div>
             </div>
@@ -183,7 +239,7 @@
               </div>
               <div>
                 <p style="margin: 0 0 6px; font-size: 0.85rem; color: #666; font-weight: 600;">Submissions</p>
-                <p style="margin: 0; color: #333; font-weight: 700; font-size: 1.2rem;">${form.submissionCount || 0}</p>
+                <p style="margin: 0; color: #333; font-weight: 700; font-size: 1.2rem;">${formSubmissionCount}</p>
               </div>
               <div>
                 <p style="margin: 0 0 6px; font-size: 0.85rem; color: #666; font-weight: 600;">Created</p>
@@ -760,6 +816,87 @@
     gap: 20px;
   }
 
+  @media (max-width: 900px) {
+    .admin-nav {
+      flex-wrap: wrap;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .admin-nav .tab {
+      flex: 1 1 50%;
+      text-align: center;
+      padding: 12px 14px;
+    }
+
+    .content-section.fullwidth .section-header,
+    .content-section.fullwidth .admin-dashboard,
+    .content-section.fullwidth .admin-section,
+    .content-section.fullwidth .forms-table,
+    .content-section.fullwidth .submissions-table {
+      padding: 0 1rem;
+    }
+
+    .stat-card {
+      padding: 22px;
+    }
+
+    .stat-number {
+      font-size: 2.4rem;
+    }
+
+    .submissions-table {
+      overflow-x: auto;
+    }
+
+    .submissions-table table {
+      min-width: 720px;
+    }
+
+    .forms-table {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .content-section.fullwidth {
+      padding: 1.25rem 0;
+    }
+
+    .admin-nav .tab {
+      flex: 1 1 100%;
+    }
+
+    .admin-section h3,
+    .section-header h2 {
+      text-align: left;
+    }
+
+    .stat-card {
+      padding: 18px;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+    }
+
+    .submissions-table table {
+      min-width: 640px;
+    }
+
+    .forms-table {
+      gap: 14px;
+    }
+
+    .content-section.fullwidth .section-header,
+    .content-section.fullwidth .admin-dashboard,
+    .content-section.fullwidth .admin-section,
+    .content-section.fullwidth .forms-table,
+    .content-section.fullwidth .submissions-table {
+      padding: 0 0.75rem;
+    }
+  }
+
   .admin-dashboard {
     animation: fadeUp 400ms ease;
   }
@@ -775,4 +912,160 @@
     }
   }
 </style>
+
+<script>
+  (function(){
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const el = document.getElementById('forms-list');
+    if (!el) return;
+    if (el.dataset.autoScrollInit) return;
+    el.dataset.autoScrollInit = '1';
+
+    // Ensure there is enough content to scroll: clone children until scrollWidth > clientWidth
+    function ensureScrollable() {
+      if (el.dataset.cloned) return;
+      let attempts = 0;
+      while (el.scrollWidth <= el.clientWidth && attempts < 6) {
+        const children = Array.from(el.children);
+        if (!children.length) break;
+        for (const c of children) {
+          const clone = c.cloneNode(true);
+          // remove inline handlers from clones to avoid duplicate actions
+          clone.querySelectorAll('[onclick]').forEach(n=>n.removeAttribute('onclick'));
+          el.appendChild(clone);
+        }
+        attempts++;
+      }
+      if (el.scrollWidth > el.clientWidth) el.dataset.cloned = '1';
+    }
+
+    // Pause on hover/focus
+    let paused = false;
+    el.addEventListener('mouseenter', ()=> paused = true);
+    el.addEventListener('mouseleave', ()=> paused = false);
+    el.addEventListener('focusin', ()=> paused = true);
+    el.addEventListener('focusout', ()=> paused = false);
+    el.addEventListener('pointerdown', ()=> paused = true);
+    el.addEventListener('pointerup', ()=> paused = false);
+
+    // Start auto-scroll using setInterval (more robust across environments)
+    const speed = 1.2; // pixels per tick
+    const tickMs = 16; // ~60fps
+    let intervalId = null;
+    function startScroll() {
+      if (intervalId) return;
+      intervalId = setInterval(() => {
+        if (!paused) {
+          el.scrollLeft += speed;
+          if (el.scrollLeft >= el.scrollWidth - el.clientWidth) {
+            el.scrollLeft = 0;
+          }
+        }
+      }, tickMs);
+    }
+
+    setTimeout(() => {
+      try { ensureScrollable(); } catch (e) { /* ignore */ }
+      startScroll();
+    }, 200);
+
+    window.addEventListener('beforeunload', ()=> { if (intervalId) clearInterval(intervalId); });
+  })();
+</script>
 {% endblock %}
+
+<!-- Strong inline override applied on DOMContentLoaded to enforce single-row scrolling -->
+<script>
+  (function(){
+    if (typeof window === 'undefined') return;
+    function inject() {
+      if (document.getElementById('forms-list-strong-override')) return;
+      const css = `
+        /* Strong override: single horizontal row */
+        #forms-list, .forms-table, .forms-list, .cards-grid {
+          display: block !important;
+          overflow-x: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+          white-space: nowrap !important;
+          padding-bottom: 6px !important;
+        }
+        #forms-list::-webkit-scrollbar { height: 10px; }
+        #forms-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 8px; }
+        #forms-list .form-card, .forms-table .form-card, .forms-list .form-card, .cards-grid .form-card {
+          display: inline-block !important;
+          vertical-align: top !important;
+          min-width: 320px !important;
+          width: 320px !important;
+          max-width: 320px !important;
+          margin-right: 20px !important;
+          white-space: normal !important;
+        }
+        @media (max-width: 700px) {
+          #forms-list, .forms-table, .forms-list, .cards-grid { white-space: normal !important; overflow-x: visible !important; }
+          #forms-list .form-card, .forms-list .form-card { display: block !important; width: 100% !important; min-width: 0 !important; margin-right: 0 !important; }
+        }
+      `;
+      const s = document.createElement('style');
+      s.id = 'forms-list-strong-override';
+      s.appendChild(document.createTextNode(css));
+      (document.head || document.documentElement).appendChild(s);
+
+      // Ensure container has scroll if needed
+      const el = document.getElementById('forms-list');
+      if (el) {
+        el.style.whiteSpace = 'nowrap';
+        el.style.overflowX = 'auto';
+      }
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject); else inject();
+  })();
+</script>
+
+<!-- DEBUG: overlay to report single-row status and force override -->
+<script>
+  (function(){
+    function createOverlay(){
+      if (document.getElementById('forms-list-overlay')) return;
+      const o = document.createElement('div');
+      o.id = 'forms-list-overlay';
+      o.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;background:rgba(0,0,0,0.72);color:#fff;padding:10px 12px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,0.4);';
+      o.innerHTML = '<div id="forms-list-overlay-status">Checking...</div><div style="margin-top:8px; display:flex; gap:8px;"><button id="forms-list-overlay-force" style="background:#fff;color:#222;border:none;padding:6px 8px;border-radius:6px;cursor:pointer;">Force</button><button id="forms-list-overlay-refresh" style="background:transparent;border:1px solid rgba(255,255,255,0.18);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer;">Reload</button></div>';
+      document.body.appendChild(o);
+      document.getElementById('forms-list-overlay-force').onclick = () => { window.dispatchEvent(new Event('formsListForceApply')); };
+      document.getElementById('forms-list-overlay-refresh').onclick = () => { location.reload(true); };
+    }
+
+    function updateStatus(){
+      const el = document.getElementById('forms-list');
+      const statusEl = document.getElementById('forms-list-overlay-status');
+      if (!statusEl) return;
+      if (!el) { statusEl.textContent = 'No #forms-list found'; return; }
+      const cards = Array.from(el.querySelectorAll('.form-card'));
+      if (!cards.length) { statusEl.textContent = 'No cards found'; return; }
+      const tops = cards.map(c=>Math.round(c.getBoundingClientRect().top));
+      const rows = new Set(tops).size;
+      statusEl.textContent = `Rows: ${rows} — Cards: ${cards.length}`;
+      if (rows === 1) statusEl.style.color = '#b7f0b0'; else statusEl.style.color = '#ffd1d1';
+    }
+
+    function forceApply(){
+      const ev = new Event('formsListApplyOverride');
+      window.dispatchEvent(ev);
+      // also re-run the inject function if present
+      try { document.getElementById('forms-list-strong-override').remove(); }catch(e){}
+      // re-inject by calling the earlier script's inject if available
+      const scriptEls = Array.from(document.scripts);
+      for (const s of scriptEls) {
+        if (s.textContent && s.textContent.includes('Strong override: single horizontal row')) {
+          try { eval(s.textContent); } catch(e) {}
+          break;
+        }
+      }
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { createOverlay(); updateStatus(); setInterval(updateStatus, 700); }); else { createOverlay(); updateStatus(); setInterval(updateStatus, 700); }
+    window.addEventListener('formsListForceApply', forceApply);
+  })();
+</script>

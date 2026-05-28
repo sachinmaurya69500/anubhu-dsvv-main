@@ -33,7 +33,7 @@
         <img src="/assets/Dev_Sanskriti_Vishwavidyalaya.png" alt="DSVV logo" class="dsVV-logo" />
         <div>
           <h1 class="portal-title" data-i18n="authStudentsPortal">STUDENTS PORTAL</h1>
-          <p class="portal-sub" data-i18n="authSupportServices">student support services</p>
+          <p class="portal-sub" data-i18n="authSupportServices">Share your experience</p>
         </div>
       </div>
 
@@ -242,10 +242,37 @@
 
   @media (max-width: 720px) {
     .auth-page { padding: 18px 14px 28px; }
-    .login-left, .login-right { padding: 24px 18px; }
+    .login-card { position: relative; min-height: 100vh; border-radius: 0; }
+    .login-left {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      padding: 0;
+      min-height: 100%;
+      border-radius: 0;
+    }
+    .login-left-copy,
+    .left-help {
+      display: none;
+    }
+    .login-right {
+      position: relative;
+      z-index: 1;
+      padding: 24px 18px;
+      background: transparent;
+      backdrop-filter: none;
+      border-radius: 0;
+    }
+    .login-panel {
+      background: rgba(255, 255, 255, 0.62);
+      border-radius: 0;
+      border-color: rgba(255, 255, 255, 0.28);
+      box-shadow: none;
+      backdrop-filter: blur(12px);
+    }
     .login-right-top { align-items:flex-start; }
     .login-right-top .dsVV-logo { width: 64px; }
-    .login-left { min-height: 300px; }
+    .login-card { overflow: hidden; }
   }
 </style>
 
@@ -266,7 +293,7 @@
   }
 
   .auth-modal-content {
-    background: var(--surface);
+    background: #ffffff;
     border-radius: var(--radius-lg);
     padding: 40px;
     max-width: 500px;
@@ -315,6 +342,18 @@
   .modal-close-btn:hover {
     background: var(--brand-soft);
     color: var(--brand);
+  }
+
+  @media (max-width: 720px) {
+    .auth-modal {
+      padding: 12px;
+    }
+
+    .auth-modal-content {
+      padding: 24px 18px;
+      border-radius: 20px;
+      max-height: calc(100vh - 24px);
+    }
   }
 </style>
 {% endblock %}

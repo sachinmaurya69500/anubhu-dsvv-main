@@ -174,7 +174,65 @@
     // Display only first 3 cards
     const cardsToDisplay = homeExperiences.slice(0, 3);
     rail.innerHTML = cardsToDisplay.map((item, index) => renderHomeExperienceCard(item, index)).join('');
+    // ensure three cards fit and are sized consistently on desktop
+    try { applyExperienceCardWidths(); } catch (e) { /* ignore */ }
   }
+
+  // Compute and apply widths so desktop shows 3 cards, medium 2, mobile 1
+  function applyExperienceCardWidths() {
+    const GAP = 32; // larger visual gap
+    const MIN_CARD = 240;
+    const MAX_CARD = 900;
+    const container = document.getElementById('home-experience-rail');
+    if (!container) return;
+
+    const ww = window.innerWidth || document.documentElement.clientWidth;
+    let visible = 3;
+    if (ww < 700) visible = 1;
+    else if (ww < 1100) visible = 2;
+
+    const cs = getComputedStyle(container);
+    const padLeft = parseFloat(cs.paddingLeft) || 0;
+    const padRight = parseFloat(cs.paddingRight) || 0;
+    const available = Math.max(0, container.clientWidth - padLeft - padRight);
+
+    const totalGap = Math.max(0, (visible - 1) * GAP);
+    let cardWidth = Math.floor((available - totalGap) / visible);
+    cardWidth = Math.max(Math.min(cardWidth, MAX_CARD), MIN_CARD);
+
+    Array.from(container.querySelectorAll('.experience-card')).forEach(c => {
+      const finalWidth = cardWidth;
+      c.style.width = finalWidth + 'px';
+      c.style.minWidth = finalWidth + 'px';
+      c.style.maxWidth = finalWidth + 'px';
+      c.style.flex = `0 0 ${finalWidth}px`;
+      c.style.display = 'block';
+      c.style.boxSizing = 'border-box';
+    });
+
+    container.style.display = 'flex';
+    container.style.flexWrap = 'nowrap';
+    container.style.gap = GAP + 'px';
+    container.style.overflowX = 'hidden';
+    container.style.justifyContent = 'flex-start';
+
+    // re-run sizing after images load
+    Array.from(container.querySelectorAll('img')).forEach(img => {
+      if (!img.complete) {
+        img.addEventListener('load', applyExperienceCardWidths, { once: true });
+        img.addEventListener('error', applyExperienceCardWidths, { once: true });
+      }
+    });
+    setTimeout(applyExperienceCardWidths, 700);
+  }
+
+  // apply on resize and initial load
+  let __expResizeTimer = null;
+  window.addEventListener && window.addEventListener('resize', function(){
+    clearTimeout(__expResizeTimer);
+    __expResizeTimer = setTimeout(applyExperienceCardWidths, 140);
+  });
+  window.applyExperienceCardWidths = applyExperienceCardWidths;
 
   function displayNoExperiences() {
     const box = document.getElementById('featured-exp-image-box');

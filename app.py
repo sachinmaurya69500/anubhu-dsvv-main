@@ -19,6 +19,8 @@ except Exception:
 from flask import Flask, jsonify, request, send_file, send_from_directory, render_template, redirect
 import json
 from werkzeug.utils import secure_filename
+import fitz
+import re
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
@@ -52,6 +54,111 @@ app = Flask(__name__, static_folder='static', static_url_path='/static', templat
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.jinja_env.auto_reload = True
+
+
+# --- PDF parsing helpers (shared) ----------------------------------------
+def _normalize_text_for_parsing(text: str) -> str:
+    if not text:
+        return ''
+    # normalize line endings and whitespace
+    s = text.replace('\r\n', '\n').replace('\r', '\n')
+    # collapse repeated newlines to at most two (preserve paragraph breaks)
+    s = re.sub(r'\n{3,}', '\n\n', s)
+    # remove common headers/footers noise heuristically (lines with site title)
+    s = re.sub(r'(?im)^\s*(anubhuti|dev sanskriti vishwavidyalaya|experience)\s*$','', s)
+    return s.strip()
+
+
+def parse_pdf_text_into_entries(text: str):
+    """Split raw PDF text into candidate blocks (one per student entry).
+
+    The function attempts several heuristics: divider lines (---), explicit 'Student Name' markers,
+    or blank-line separated paragraphs. Returns list[str].
+    """
+    text = _normalize_text_for_parsing(text)
+    if not text:
+        return []
+
+    # Primary splits: explicit separators or label markers
+    parts = re.split(r"\n-{3,}\n|\nStudent\s*Name[:\-]?|\nName[:\-]\s|\nCandidate[:\-]", text, flags=re.IGNORECASE)
+    parts = [p.strip() for p in parts if p and p.strip()]
+    if len(parts) <= 1:
+        # Fallback: split on double-newline (paragraphs) where a paragraph looks like a full entry
+        cand = [p.strip() for p in re.split(r'\n\n+', text) if p.strip()]
+        if len(cand) > 1:
+            return cand
+    return parts if parts else [text]
+
+
+def extract_fields_from_block(block: str):
+    """Extract structured fields from a single text block using multiple label variants.
+
+    Returns dict with keys matching submission fields.
+    """
+    b = block.strip()
+    get_first = lambda patterns: next((m.group(1).strip() for pat in patterns for m in [re.search(pat, b, re.IGNORECASE | re.DOTALL)] if m and m.group(1) and m.group(1).strip()), '')
+
+    # Name variants
+    studentName = get_first([
+        r"Student\s*Name[:\-]\s*(.+?)\n",
+        r"Name[:\-]\s*(.+?)\n",
+        r"^([A-Z][A-Za-z .,'-]{2,})\n",
+    ])
+
+    email = get_first([r"Email[:\-]\s*(\S+@\S+?)\b", r"E-mail[:\-]\s*(\S+@\S+?)\b"]) or ''
+
+    roll = get_first([
+        r"Roll(?:\s*No(?:\.|)| Number)?[:\-]\s*(.+?)\n",
+        r"Enrollment\s*No[:\-]\s*(.+?)\n",
+        r"Roll\s*[:\-]\s*(.+?)\n",
+    ])
+
+    programme = get_first([
+        r"Programme[:\-]\s*(.+?)\n",
+        r"Program[:\-]\s*(.+?)\n",
+        r"Course[:\-]\s*(.+?)\n",
+    ])
+
+    organization = get_first([
+        r"Organization[:\-]\s*(.+?)\n",
+        r"Place of Internship[:\-]\s*(.+?)\n",
+        r"Company[:\-]\s*(.+?)\n",
+        r"Organisation[:\-]\s*(.+?)\n",
+    ])
+
+    mentor = get_first([r"Mentor[:\-]\s*(.+?)\n", r"Supervisor[:\-]\s*(.+?)\n", r"Guide[:\-]\s*(.+?)\n"]) or ''
+
+    duration = get_first([r"Duration[:\-]\s*(.+?)\n", r"Period[:\-]\s*(.+?)\n"]) or ''
+
+    # Summary: prefer explicit Summary label, Experience or long trailing text
+    summary = ''
+    m = re.search(r"Summary[:\-]\s*(.+)$", b, re.IGNORECASE | re.DOTALL)
+    if not m:
+        m = re.search(r"Experience[:\-]\s*(.+)$", b, re.IGNORECASE | re.DOTALL)
+    if m:
+        summary = m.group(1).strip()
+    else:
+        # fallback: take the last 1200 characters or the last paragraph after duration/mentor
+        parts_after = re.split(r"(?:Mentor[:\-].*|Duration[:\-].*)\n", b, flags=re.IGNORECASE)
+        if len(parts_after) > 1:
+            summary = parts_after[-1].strip()
+        else:
+            # last paragraph
+            paras = [p.strip() for p in re.split(r'\n\n+', b) if p.strip()]
+            summary = paras[-1] if paras else b[:2000]
+
+    return {
+        'studentName': studentName or '',
+        'email': email or '',
+        'rollNumber': roll or '',
+        'programme': programme or '',
+        'organization': organization or '',
+        'mentor': mentor or '',
+        'duration': duration or '',
+        'summary': summary or '',
+    }
+
+# -------------------------------------------------------------------------
 
 
 def _avatar_storage_candidates():
@@ -105,6 +212,45 @@ def save_avatar_file(photo):
     raise OSError('Unable to save avatar file.')
 
 
+def save_uploaded_file(fileobj, subfolder='pdfs'):
+    """Save an uploaded file to a writable uploads directory and return a public URL.
+
+    Files are saved under `static/uploads/<subfolder>/` when possible, with a /tmp fallback.
+    """
+    if not fileobj or not getattr(fileobj, 'filename', ''):
+        return None
+
+    filename = secure_filename(f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{fileobj.filename}")
+    last_error = None
+
+    # Candidate storage locations
+    candidates = []
+    configured = os.getenv('UPLOAD_DIR', '').strip()
+    if configured:
+        candidates.append(os.path.join(configured, subfolder))
+    candidates.append(os.path.join(app.static_folder or 'static', 'uploads', subfolder))
+    candidates.append(os.path.join('/tmp/anubhuti_uploads', subfolder))
+
+    for uploads_dir in candidates:
+        try:
+            os.makedirs(uploads_dir, exist_ok=True)
+            save_path = os.path.join(uploads_dir, filename)
+            # ensure stream at start
+            try:
+                fileobj.stream.seek(0)
+            except Exception:
+                pass
+            fileobj.save(save_path)
+            return f"/api/uploads/{subfolder}/{filename}"
+        except OSError as e:
+            last_error = e
+            continue
+
+    if last_error:
+        raise last_error
+    raise OSError('Unable to save uploaded file.')
+
+
 def get_client_ip():
     """Return the best-effort client IP address for audit logs."""
     forwarded_for = request.headers.get('X-Forwarded-For', '')
@@ -123,6 +269,29 @@ def get_uploaded_avatar(filename):
             if os.path.exists(file_path):
                 return send_from_directory(uploads_dir, safe_filename)
         return jsonify({'message': 'Avatar not found.'}), 404
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@app.route('/api/uploads/<subfolder>/<path:filename>', methods=['GET'])
+def get_uploaded_file(subfolder, filename):
+    """Serve uploaded files from candidate storage locations under a given subfolder."""
+    try:
+        safe_filename = secure_filename(filename)
+        candidates = [
+            os.path.join(app.static_folder or 'static', 'uploads', subfolder),
+            os.path.join('/tmp/anubhuti_uploads', subfolder),
+        ]
+        configured = os.getenv('UPLOAD_DIR', '').strip()
+        if configured:
+            candidates.insert(0, os.path.join(configured, subfolder))
+
+        for uploads_dir in candidates:
+            file_path = os.path.join(uploads_dir, safe_filename)
+            if os.path.exists(file_path):
+                return send_from_directory(uploads_dir, safe_filename)
+
+        return jsonify({'message': 'File not found.'}), 404
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
@@ -600,7 +769,7 @@ def serve_admin_users():
 
 @app.route('/admin/logs')
 def serve_admin_logs():
-    """Serve admin visit logs page."""
+    """Serve admin experience data page."""
     user = verify_auth()
     if not user:
         return redirect('/auth')
@@ -1517,6 +1686,319 @@ def upload_submission_avatar(submission_id):
 
         submissions.update_one({'_id': ObjectId(submission_id)}, {'$set': {'avatarUrl': avatar_url}})
         return jsonify({'ok': True, 'avatarUrl': avatar_url})
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@app.route('/api/admin/forms/<form_id>/upload-pdf', methods=['POST'])
+@require_auth
+def admin_upload_form_pdf(form_id):
+    """Admin: upload a PDF (or multiple PDFs) containing student experience entries.
+    Extracts text using PyMuPDF and creates pending submissions for admin review.
+    """
+    try:
+        # Debug logging to help diagnose file upload issues (method, headers, files)
+        try:
+            print('DEBUG admin_upload_form_pdf method=', request.method)
+            print('DEBUG admin_upload_form_pdf Content-Type=', request.headers.get('Content-Type'))
+            print('DEBUG admin_upload_form_pdf files=', list(request.files.keys()))
+            for key, f in request.files.items():
+                try:
+                    sample = f.read(64)
+                    size_sample = len(sample)
+                    # reset stream so later reads work as expected
+                    try:
+                        f.stream.seek(0)
+                    except Exception:
+                        pass
+                except Exception:
+                    size_sample = 'n/a'
+                print(f"DEBUG file {key}: filename={f.filename}, sample_bytes={size_sample}")
+        except Exception as _:
+            print('DEBUG admin_upload_form_pdf: failed to print request debug info')
+        # ensure form exists
+        try:
+            form = forms.find_one({'_id': ObjectId(form_id)})
+        except Exception:
+            return jsonify({'message': 'Invalid form ID.'}), 400
+        if not form:
+            return jsonify({'message': 'Form not found.'}), 404
+
+        if 'pdf' not in request.files and len(request.files) == 0:
+            # accept any file input as fallback
+            return jsonify({'message': 'No PDF uploaded (field name should be "pdf").'}), 400
+
+        # Optional overrides coming from the preview modal (JSON array)
+        overrides = None
+        try:
+            if request.form and 'overrides' in request.form:
+                overrides = json.loads(request.form.get('overrides') or 'null')
+                if not isinstance(overrides, list):
+                    overrides = None
+        except Exception:
+            overrides = None
+
+        files = request.files.getlist('pdf') if 'pdf' in request.files else list(request.files.values())
+        created = []
+
+        def parse_entries_from_text(text):
+            # Robust splitting into entries. Aim to split where a new student starts. Support
+            # explicit separators (---), labels like 'Student Name', 'Name', or 'Candidate'.
+            # Also split at form-like headings when present.
+            separators = r"\n-{3,}\n|\n(?=Student Name[:\s]|Name[:\s]|Candidate[:\s]|Full Name[:\s])"
+            parts = re.split(separators, text, flags=re.IGNORECASE)
+            candidates = [p.strip() for p in parts if p and p.strip()]
+            if not candidates:
+                return [text.strip()]
+            return candidates
+
+        def extract_fields(block):
+            # Improved heuristics for extraction. Try to locate fields by label first,
+            # then fallback to looser pattern searches anywhere in block.
+            flags = re.IGNORECASE | re.DOTALL
+
+            def find_by_label(labels):
+                for lab in labels:
+                    # match label followed by colon or dash and capture until newline
+                    pat = rf"{lab}[:\-]\s*(.+?)\n"
+                    m = re.search(pat, block, flags)
+                    if m and m.group(1).strip():
+                        return m.group(1).strip()
+                return ''
+
+            studentName = find_by_label([r"Student Name", r"Full Name", r"Name", r"Candidate"]) or ''
+
+            # email: find anywhere in the block
+            email_m = re.search(r"([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})", block)
+            email = email_m.group(1).strip() if email_m else ''
+
+            # roll/enrollment
+            roll = find_by_label([r"Roll Number", r"Roll No", r"Roll", r"Enrollment No", r"Enrollment Number"]) or ''
+            if not roll:
+                m = re.search(r"\b(DSV\w*\d{3,}|\b\d{4,}\b)\b", block)
+                if m:
+                    roll = m.group(0).strip()
+
+            programme = find_by_label([r"Programme", r"Program", r"Course", r"Programme/Course"]) or ''
+            if not programme:
+                # try to capture common degree abbreviations followed by text
+                m = re.search(r"\b(B\.?A\.?|B\.?Sc\.?|B\.?Tech\.?|M\.?A\.?|M\.?Sc\.?|M\.?Tech\.?)\b[\w\s.,&()-]{0,60}", block)
+                if m:
+                    programme = m.group(0).strip()
+
+            organization = find_by_label([r"Organization", r"Place of Internship", r"Company", r"Institution", r"Organization/Company"]) or ''
+            mentor = find_by_label([r"Mentor", r"Supervisor", r"Guide", r"Mentor/Supervisor"]) or ''
+            duration = find_by_label([r"Duration", r"Period", r"Tenure"]) or ''
+
+            # Summary: capture text after 'Summary' or 'Your Experience' or take trailing paragraph
+            summary = ''
+            m = re.search(r"(?:Summary|Experience Summary|Your Experience|Experience)[:\-]\s*(.+)$", block, flags)
+            if m:
+                summary = m.group(1).strip()
+            else:
+                # fallback: take the longest paragraph (heuristic)
+                paras = [p.strip() for p in re.split(r"\n{2,}", block) if p.strip()]
+                if paras:
+                    # prefer paragraphs longer than 80 chars
+                    paras_sorted = sorted(paras, key=lambda p: len(p), reverse=True)
+                    summary = paras_sorted[0][:3000]
+
+            return {
+                'studentName': studentName or '',
+                'email': email or '',
+                'rollNumber': roll or '',
+                'programme': programme or '',
+                'organization': organization or '',
+                'mentor': mentor or '',
+                'duration': duration or '',
+                'summary': summary or '',
+            }
+
+        for f in files:
+            if not f or not f.filename:
+                continue
+            filename = f.filename.lower()
+            if not filename.endswith('.pdf'):
+                continue
+            # Save the uploaded PDF file to disk so it is available like other uploads
+            try:
+                pdf_url = save_uploaded_file(f, subfolder='pdfs')
+            except Exception:
+                pdf_url = None
+
+            try:
+                # ensure stream at start before reading for parsing
+                try:
+                    f.stream.seek(0)
+                except Exception:
+                    pass
+                data = f.read()
+            except Exception as e:
+                continue
+            try:
+                doc = fitz.open(stream=data, filetype='pdf')
+            except Exception as e:
+                continue
+            full_text = []
+            for page in doc:
+                try:
+                    full_text.append(page.get_text('text'))
+                except Exception:
+                    full_text.append('')
+            doc.close()
+            text = '\n'.join(full_text)
+
+            entries = parse_pdf_text_into_entries(text)
+            for idx, block in enumerate(entries):
+                fields = extract_fields_from_block(block)
+                # apply client-side overrides in order when provided
+                if overrides and isinstance(overrides, list) and idx < len(overrides):
+                    ov = overrides[idx] or {}
+                    for k in ('studentName', 'email', 'rollNumber', 'programme', 'organization', 'mentor', 'duration', 'summary'):
+                        if k in ov and ov[k] is not None and str(ov[k]).strip() != '':
+                            fields[k] = str(ov[k]).strip()
+                # require a name and summary at minimum
+                if not fields['studentName'] and not fields['summary']:
+                    continue
+                sub_doc = {
+                    'formId': ObjectId(form_id),
+                    'volumeId': form.get('volumeId', ''),
+                    'studentName': fields['studentName'] or 'Unknown',
+                    'email': fields.get('email', ''),
+                    'rollNumber': fields.get('rollNumber', ''),
+                    'programme': fields.get('programme', ''),
+                    'organization': fields.get('organization', ''),
+                    'mentor': fields.get('mentor', ''),
+                    'duration': fields.get('duration', ''),
+                    'summary': fields.get('summary', ''),
+                    'submittedAt': datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+                    'createdAt': datetime.now(timezone.utc),
+                    'status': 'pending',
+                    'statusReason': 'Uploaded by admin via PDF',
+                }
+                if pdf_url:
+                    sub_doc['pdfUrl'] = pdf_url
+                res = submissions.insert_one(sub_doc)
+                # increment count
+                forms.update_one({'_id': ObjectId(form_id)}, [{'$set': {'submissionCount': {'$add': [{'$max': [0, {'$ifNull': ['$submissionCount', 0]}]}, 1]}}}])
+                sub_doc['_id'] = res.inserted_id
+                student_activity.insert_one({
+                    'studentId': None,
+                    'name': sub_doc.get('studentName'),
+                    'email': sub_doc.get('email', ''),
+                    'eventType': 'form_upload_pdf',
+                    'formId': ObjectId(form_id),
+                    'submissionId': sub_doc['_id'],
+                    'createdAt': datetime.now(timezone.utc),
+                    'adminId': request.user['id'],
+                    'ipAddress': get_client_ip(),
+                })
+                created.append(to_client(sub_doc))
+
+        return jsonify({'created': created, 'count': len(created)})
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@app.route('/api/debug/parse-pdf', methods=['POST'])
+def debug_parse_pdf():
+    """Debug-only: accept PDF upload(s), parse and return extracted entries without inserting to DB.
+    Use this to verify PyMuPDF extraction and field heuristics locally.
+    """
+    try:
+        # Debug logging to capture incoming request details for diagnosis
+        try:
+            print('DEBUG debug_parse_pdf method=', request.method)
+            print('DEBUG debug_parse_pdf Content-Type=', request.headers.get('Content-Type'))
+            print('DEBUG debug_parse_pdf files=', list(request.files.keys()))
+            for key, f in request.files.items():
+                try:
+                    sample = f.read(64)
+                    sample_len = len(sample)
+                    try:
+                        f.stream.seek(0)
+                    except Exception:
+                        pass
+                except Exception:
+                    sample_len = 'n/a'
+                print(f"DEBUG debug file {key}: filename={f.filename}, sample_bytes={sample_len}")
+        except Exception:
+            print('DEBUG debug_parse_pdf: failed to log request details')
+        if 'pdf' not in request.files and len(request.files) == 0:
+            return jsonify({'message': 'No PDF uploaded (field name should be "pdf").'}), 400
+
+        files = request.files.getlist('pdf') if 'pdf' in request.files else list(request.files.values())
+        results = []
+
+        def parse_entries_from_text_local(text):
+            parts = re.split(r"\n-{3,}\n|\nStudent Name:|\nName:\\s", text, flags=re.IGNORECASE)
+            candidates = [p.strip() for p in parts if p and p.strip()]
+            if not candidates:
+                candidates = [text]
+            return candidates
+
+        def extract_fields_local(block):
+            get = lambda patterns: next((m.group(1).strip() for pat in patterns for m in [re.search(pat, block, re.IGNORECASE | re.DOTALL)] if m and m.group(1).strip()), '')
+            studentName = get([r"Student Name[:\-]\s*(.+?)\n", r"Name[:\-]\s*(.+?)\n"]) or get([r"^([A-Z][A-Za-z .,'-]{2,})\\n"]) or ''
+            email = get([r"Email[:\-]\s*(\S+@\S+)\b"]) or ''
+            roll = get([r"Roll(?:\s*No(?:\.|)| Number)?[:\-]\s*(.+?)\n", r"Roll[:\-]\s*(.+?)\n"]) or ''
+            programme = get([r"Programme[:\-]\s*(.+?)\n", r"Program[:\-]\s*(.+?)\n"]) or ''
+            organization = get([r"Organization[:\-]\s*(.+?)\n", r"Place of Internship[:\-]\s*(.+?)\n"]) or ''
+            mentor = get([r"Mentor[:\-]\s*(.+?)\n", r"Supervisor[:\-]\s*(.+?)\n"]) or ''
+            duration = get([r"Duration[:\-]\s*(.+?)\n"]) or ''
+            summary = ''
+            m = re.search(r"Summary[:\-]\s*(.+)$", block, re.IGNORECASE | re.DOTALL)
+            if m:
+                summary = m.group(1).strip()
+            else:
+                summary = block.strip()[:2000]
+            return {
+                'studentName': studentName or '',
+                'email': email or '',
+                'rollNumber': roll or '',
+                'programme': programme or '',
+                'organization': organization or '',
+                'mentor': mentor or '',
+                'duration': duration or '',
+                'summary': summary or '',
+            }
+
+        for f in files:
+            if not f or not f.filename:
+                continue
+            if not f.filename.lower().endswith('.pdf'):
+                continue
+            data = f.read()
+            try:
+                doc = fitz.open(stream=data, filetype='pdf')
+            except Exception as e:
+                results.append({'filename': f.filename, 'error': str(e)})
+                continue
+            full_text = []
+            for page in doc:
+                try:
+                    full_text.append(page.get_text('text'))
+                except Exception:
+                    full_text.append('')
+            doc.close()
+            text = '\n'.join(full_text)
+            entries = parse_pdf_text_into_entries(text)
+            parsed = [extract_fields_from_block(block) for block in entries]
+            results.append({'filename': f.filename, 'entries': parsed, 'raw_text_sample': text[:2000]})
+
+        return jsonify({'results': results})
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@app.route('/api/debug/echo-post', methods=['POST'])
+def debug_echo_post():
+    """Simple debug endpoint to confirm the server is receiving POST and multipart files."""
+    try:
+        print('DEBUG echo-post method=', request.method)
+        print('DEBUG echo-post Content-Type=', request.headers.get('Content-Type'))
+        print('DEBUG echo-post files=', list(request.files.keys()))
+        return jsonify({'method': request.method, 'content_type': request.headers.get('Content-Type'), 'files': list(request.files.keys())})
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 

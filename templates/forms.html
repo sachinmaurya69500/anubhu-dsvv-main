@@ -369,6 +369,14 @@
 <script>
   let currentAuthUser = null;
   let submittedFormIds = new Set();
+  let currentFormDeadline = null;
+
+  function isFormExpired(deadline) {
+    if (!deadline) return false;
+    const deadlineDate = String(deadline).split('T')[0];
+    const today = new Date().toISOString().slice(0, 10);
+    return deadlineDate < today;
+  }
 
   (async function() {
     try {
@@ -396,6 +404,11 @@
       }
 
       container.innerHTML = forms.map(form => `
+        ${(() => {
+          const formId = String(form._id || form.id || '');
+          const expired = isFormExpired(form.deadline);
+          const submitted = submittedFormIds.has(formId);
+          return `
         <div class="card form-card surface-card">
           <div class="form-body">
             <div class="form-meta">
@@ -412,16 +425,20 @@
             </div>
           </div>
           <div class="form-card-footer">
-            ${submittedFormIds.has(String(form._id || form.id || '')) ? '<span class="form-status">Already submitted</span>' : ''}
+            ${submitted ? '<span class="form-status">Already submitted</span>' : ''}
+            ${!submitted && expired ? '<span class="form-status" style="color: #c0392b;">Deadline passed</span>' : ''}
             <button
               class="button primary button-sm"
-              onclick="${submittedFormIds.has(String(form._id || form.id || '')) ? 'void(0)' : (isAuth ? `loadFormModal('${form._id || form.id}', false)` : `window.location='/auth'`)}"
-              ${submittedFormIds.has(String(form._id || form.id || '')) ? `disabled title="You have already submitted this form."` : ''}
+              onclick="${submitted || expired ? 'void(0)' : (isAuth ? `loadFormModal('${form._id || form.id}', '${form.deadline || ''}')` : `window.location='/auth'`)}"
+              ${submitted ? `disabled title="You have already submitted this form."` : ''}
+              ${!submitted && expired ? `disabled title="The deadline for this experience has passed."` : ''}
             >
-              ${submittedFormIds.has(String(form._id || form.id || '')) ? 'Submitted' : 'Submit Response'}
+              ${submitted ? 'Submitted' : (expired ? 'Deadline Closed' : 'Submit Response')}
             </button>
           </div>
         </div>
+          `;
+        })()}
       `).join('');
     } catch (err) {
       console.error('Error loading forms:', err);
@@ -429,8 +446,13 @@
     }
   })();
 
-  function loadFormModal(formId, alreadySubmitted = false) {
-    if (alreadySubmitted) return;
+  function loadFormModal(formId, deadline = '') {
+    if (isFormExpired(deadline)) {
+      alert('This experience deadline has passed. You can no longer share your experience.');
+      return;
+    }
+
+    currentFormDeadline = deadline || null;
 
     const modal = document.createElement('div');
     modal.className = 'modal submission-modal';
@@ -565,6 +587,10 @@
 
   function handleSubmit(event, formId) {
     event.preventDefault();
+    if (isFormExpired(currentFormDeadline)) {
+      alert('This experience deadline has passed. Submission is closed.');
+      return;
+    }
     const form = document.getElementById('submission-form');
     const fileInput = form.querySelector('#photo');
     const file = fileInput ? fileInput.files[0] : null;
